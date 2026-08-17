@@ -10,10 +10,12 @@ export function EndpointTree({
   endpoints,
   selected,
   onSelect,
+  stats,
 }: {
   endpoints: Endpoint[];
   selected: Endpoint | null;
   onSelect: (e: Endpoint) => void;
+  stats?: (e: Endpoint) => { calls: number; violations: number } | undefined;
 }) {
   const [query, setQuery] = useState("");
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
@@ -52,6 +54,19 @@ export function EndpointTree({
                 >
                   <MethodBadge method={e.method} />
                   <span className="truncate font-mono text-xs">{e.pathTemplate}</span>
+                  {(() => {
+                    const s = stats?.(e);
+                    if (!s || s.calls === 0) return null;
+                    return (
+                      <span
+                        className={`ml-auto text-[10px] ${
+                          s.violations > 0 ? "text-red-400" : "text-emerald-400"
+                        }`}
+                      >
+                        {s.calls}
+                      </span>
+                    );
+                  })()}
                 </button>
               );
             })}

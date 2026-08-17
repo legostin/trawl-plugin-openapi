@@ -1,28 +1,50 @@
 import { AddSpec } from "./AddSpec";
 import { EndpointTree } from "./EndpointTree";
 import { EndpointView } from "./EndpointView";
+import { HostBindings } from "./HostBindings";
+import { RealityPanel } from "./RealityPanel";
+import { getEngine } from "./engine";
 import type { Endpoint, Spec } from "./model";
-import { SpecStore } from "./store";
+import { endpointKey } from "./model";
+import { onSelection, takeSelection } from "./selection";
+import type { SessionWindow } from "./session";
 
 const host = window.__TRAWL__!;
-const { useEffect, useMemo, useState } = host.react;
+const { useEffect, useState } = host.react;
+
+const WINDOWS: { value: SessionWindow; label: string }[] = [
+  { value: "capture", label: "Since capture started" },
+  { value: "project", label: "Whole project" },
+  { value: "filter", label: "Current traffic filter" },
+];
 
 export function OpenApiApp() {
-  const store = useMemo(() => new SpecStore(host), []);
-  const [specs, setSpecs] = useState<Spec[]>([]);
+  const engine = getEngine();
+  const [, bump] = useState(0);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Endpoint | null>(null);
   const [adding, setAdding] = useState(false);
 
+  useEffect(() => engine?.subscribe(() => bump((n) => n + 1)), [engine]);
+
+  // A flow action may have asked for an endpoint before this mode was mounted.
   useEffect(() => {
-    const off = store.subscribe(() => setSpecs([...store.list()]));
-    void store.load();
-    return off;
-  }, [store]);
+    const show = (s: { specId: string; endpointKey: string }) => {
+      const spec = engine?.store.list().find((x) => x.id === s.specId);
+      const ep = spec?.endpoints.find((e) => endpointKey(e) === s.endpointKey);
+      if (spec && ep) {
+        setActiveId(spec.id);
+        setSelected(ep);
+      }
+    };
+    const pending = takeSelection();
+    if (pending) show(pending);
+    return onSelection(show);
+  }, [engine]);
 
-  // Follow the active project: specs are stored per project by the host.
-  useEffect(() => host.projects.onChange(() => void store.load()), [store]);
+  if (!engine) return <p className="p-4 text-sm text-muted-foreground">The plugin did not start.</p>;
 
+  const specs: Spec[] = engine.store.list();
   const active = specs.find((s) => s.id === activeId) ?? specs[0] ?? null;
 
   if (adding || specs.length === 0) {
@@ -33,7 +55,7 @@ export function OpenApiApp() {
             No spec loaded yet. Add one from a URL, a file, or paste it.
           </p>
         )}
-        <AddSpec store={store} onDone={() => setAdding(false)} />
+        <AddSpec store={engine.store} onDone={() => setAdding(false)} />
         {specs.length > 0 && (
           <button className="ml-4 text-sm underline" onClick={() => setAdding(false)}>
             Cancel
@@ -43,9 +65,12 @@ export function OpenApiApp() {
     );
   }
 
+  const totals = engine.aggregates.totals();
+  const undocumented = engine.aggregates.undocumented();
+
   return (
     <div className="h-full flex flex-col">
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-border text-sm">
+      <div className="flex items-center gap-3 px-3 py-2 border-b border-border text-sm">
         <select
           className="bg-transparent"
           value={active?.id}
@@ -60,12 +85,27 @@ export function OpenApiApp() {
             </option>
           ))}
         </select>
-        <span className="text-muted-foreground text-xs">
-          {active?.endpoints.length} endpoints · {active?.hosts.join(", ") || "no host bound"}
+        {active && <HostBindings key={active.id} spec={active} store={engine.store} />}
+        <select
+          className="bg-transparent text-xs"
+          value={engine.window}
+          onChange={(e) => engine.setWindow(e.target.value as SessionWindow)}
+        >
+          {WINDOWS.map((w) => (
+            <option key={w.value} value={w.value}>
+              {w.label}
+            </option>
+          ))}
+        </select>
+        <span className="text-xs text-muted-foreground">
+          {engine.backfilling
+            ? "reading history…"
+            : `${totals.calls} calls · ${totals.violations} with violations`}
+          {undocumented.length > 0 && ` · ${undocumented.length} undocumented`}
         </span>
         <div className="ml-auto flex gap-3 text-xs">
           {active?.source.kind === "url" && (
-            <button className="underline" onClick={() => void store.refresh(active.id)}>
+            <button className="underline" onClick={() => void engine.store.refresh(active.id)}>
               Refresh
             </button>
           )}
@@ -75,7 +115,7 @@ export function OpenApiApp() {
           <button
             className="underline"
             onClick={() => {
-              if (active) void store.remove(active.id);
+              if (active) void engine.store.remove(active.id);
               setSelected(null);
             }}
           >
@@ -84,8 +124,10 @@ export function OpenApiApp() {
         </div>
       </div>
 
-      {store.loadError && (
-        <p className="px-3 py-2 text-xs text-red-400 border-b border-border">{store.loadError}</p>
+      {engine.store.loadError && (
+        <p className="px-3 py-2 text-xs text-red-400 border-b border-border">
+          {engine.store.loadError}
+        </p>
       )}
 
       <div className="flex-1 min-h-0 flex">
@@ -94,10 +136,14 @@ export function OpenApiApp() {
             endpoints={active?.endpoints ?? []}
             selected={selected}
             onSelect={setSelected}
+            stats={(e) => (active ? engine.aggregates.forEndpoint(active.id, endpointKey(e)) : undefined)}
           />
         </div>
         <div className="flex-1 overflow-auto">
           <EndpointView endpoint={selected} />
+        </div>
+        <div className="w-80 border-l border-border overflow-auto">
+          <RealityPanel engine={engine} spec={active} endpoint={selected} />
         </div>
       </div>
     </div>
