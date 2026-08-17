@@ -1,6 +1,7 @@
 import { load } from "js-yaml";
 import type { BodySpec, Endpoint, Param, ParamIn, SpecDoc } from "./model";
 import { resolveSchema } from "./refs";
+import { swagger2ToOpenApi } from "./swagger2";
 
 export type ParseResult = { ok: true; doc: SpecDoc } | { ok: false; error: string };
 
@@ -131,18 +132,19 @@ export function parseSpec(text: string): ParseResult {
       error: "No `openapi` or `swagger` version field — this does not look like an API spec.",
     };
   }
-  if (typeof root.swagger === "string") {
-    return { ok: false, error: `Swagger ${root.swagger} is not supported yet.` };
+  if (typeof root.swagger === "string" && !root.swagger.startsWith("2.")) {
+    return { ok: false, error: `Swagger ${root.swagger} is not supported.` };
   }
 
-  const info = isDict(root.info) ? root.info : {};
+  const doc = typeof root.swagger === "string" ? swagger2ToOpenApi(root) : root;
+  const info = isDict(doc.info) ? doc.info : {};
   return {
     ok: true,
     doc: {
       title: str(info.title, "Untitled API"),
       version: str(info.version, ""),
-      servers: serversOf(root),
-      endpoints: endpointsOf(root),
+      servers: serversOf(doc),
+      endpoints: endpointsOf(doc),
     },
   };
 }
