@@ -1,4 +1,7 @@
 import { AddSpec } from "./AddSpec";
+import { CoverageView } from "./CoverageView";
+import { DriftView } from "./DriftView";
+import { UndocumentedView } from "./UndocumentedView";
 import { EndpointTree } from "./EndpointTree";
 import { EndpointView } from "./EndpointView";
 import { HostBindings } from "./HostBindings";
@@ -24,6 +27,12 @@ export function OpenApiApp() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Endpoint | null>(null);
   const [adding, setAdding] = useState(false);
+  const [tab, setTab] = useState<"browse" | "coverage" | "undocumented" | "drift">("browse");
+
+  const showEndpoint = (e: Endpoint) => {
+    setSelected(e);
+    setTab("browse");
+  };
 
   useEffect(() => engine?.subscribe(() => bump((n) => n + 1)), [engine]);
 
@@ -124,28 +133,54 @@ export function OpenApiApp() {
         </div>
       </div>
 
+      <div className="flex gap-3 px-3 py-1.5 border-b border-border text-xs">
+        {(["browse", "coverage", "undocumented", "drift"] as const).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={tab === t ? "text-foreground" : "text-muted-foreground"}
+          >
+            {t === "undocumented" && undocumented.length > 0
+              ? `undocumented (${undocumented.length})`
+              : t}
+          </button>
+        ))}
+      </div>
+
       {engine.store.loadError && (
         <p className="px-3 py-2 text-xs text-red-400 border-b border-border">
           {engine.store.loadError}
         </p>
       )}
 
-      <div className="flex-1 min-h-0 flex">
-        <div className="w-72 border-r border-border overflow-auto">
-          <EndpointTree
-            endpoints={active?.endpoints ?? []}
-            selected={selected}
-            onSelect={setSelected}
-            stats={(e) => (active ? engine.aggregates.forEndpoint(active.id, endpointKey(e)) : undefined)}
-          />
+      {tab === "browse" ? (
+        <div className="flex-1 min-h-0 flex">
+          <div className="w-72 border-r border-border overflow-auto">
+            <EndpointTree
+              endpoints={active?.endpoints ?? []}
+              selected={selected}
+              onSelect={setSelected}
+              stats={(e) =>
+                active ? engine.aggregates.forEndpoint(active.id, endpointKey(e)) : undefined
+              }
+            />
+          </div>
+          <div className="flex-1 overflow-auto">
+            <EndpointView endpoint={selected} />
+          </div>
+          <div className="w-80 border-l border-border overflow-auto">
+            <RealityPanel engine={engine} spec={active} endpoint={selected} />
+          </div>
         </div>
-        <div className="flex-1 overflow-auto">
-          <EndpointView endpoint={selected} />
+      ) : (
+        <div className="flex-1 min-h-0 overflow-auto">
+          {tab === "coverage" && active && (
+            <CoverageView engine={engine} spec={active} onSelect={showEndpoint} />
+          )}
+          {tab === "undocumented" && <UndocumentedView engine={engine} />}
+          {tab === "drift" && active && <DriftView engine={engine} spec={active} />}
         </div>
-        <div className="w-80 border-l border-border overflow-auto">
-          <RealityPanel engine={engine} spec={active} endpoint={selected} />
-        </div>
-      </div>
+      )}
     </div>
   );
 }
