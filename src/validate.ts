@@ -1,4 +1,6 @@
-import type { Schema, Violation, ViolationWhere } from "./model";
+import type { BodySpec, Endpoint, Param, Schema, Violation, ViolationWhere } from "./model";
+import type { FlowSample } from "./flow";
+import type { Match } from "./match";
 
 const typeName = (v: unknown): string => {
   if (v === null) return "null";
@@ -105,4 +107,167 @@ export function validateValue(
   }
 
   return out;
+}
+
+export const MAX_BODY = 512 * 1024;
+
+export interface ValidationResult {
+  violations: Violation[];
+  /** What was deliberately not checked, in words a user can read. */
+  notes: string[];
+}
+
+/** Exact code, then its class ("2XX"), then "default" — the spec's own order. */
+export function responseSpecFor(
+  endpoint: Endpoint,
+  status: number,
+): { key: string; body: BodySpec } | null {
+  const exact = String(status);
+  const wildcard = `${Math.floor(status / 100)}XX`;
+  for (const key of [exact, wildcard, wildcard.toLowerCase(), "default"]) {
+    const body = endpoint.responses[key];
+    if (body) return { key, body };
+  }
+  return null;
+}
+
+const isJson = (contentType: string | undefined): boolean =>
+  contentType === undefined || contentType.includes("json");
+
+/** Everything on the wire is a string; compare it as what the schema expects. */
+function coerce(raw: string, param: Param): unknown {
+  const types = param.schema?.type;
+  const type = Array.isArray(types) ? types[0] : types;
+  if (type === "number" || type === "integer") {
+    const n = Number(raw);
+    return raw.trim() !== "" && Number.isFinite(n) ? n : raw;
+  }
+  if (type === "boolean") {
+    if (raw === "true") return true;
+    if (raw === "false") return false;
+  }
+  return raw;
+}
+
+function validateBody(
+  body: BodySpec | undefined,
+  text: string | undefined,
+  contentType: string | undefined,
+  where: "request.body" | "response.body",
+  notes: string[],
+): Violation[] {
+  if (!body?.schema || text === undefined) return [];
+  if (text.length > MAX_BODY) {
+    notes.push(`The ${where} was too large to check (${Math.round(text.length / 1024)} KB).`);
+    return [];
+  }
+  if (!isJson(contentType)) {
+    notes.push(`The ${where} is not JSON (${contentType}) — not checked against the schema.`);
+    return [];
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return [{ where, pointer: "", expected: "JSON", actual: "a body that does not parse" }];
+  }
+  return validateValue(body.schema, parsed, where);
+}
+
+function validateParams(match: Match, sample: FlowSample): Violation[] {
+  const out: Violation[] = [];
+  for (const param of match.endpoint.params) {
+    if (param.in === "query") {
+      const hits = sample.query.filter(([k]) => k === param.name);
+      if (hits.length === 0) {
+        if (param.required) {
+          out.push({ where: "query", pointer: param.name, expected: "required", actual: "missing" });
+        }
+        continue;
+      }
+      out.push(
+        ...validateValue(param.schema, coerce(hits[0][1], param), "query", param.name).map((v) => ({
+          ...v,
+          pointer: param.name,
+        })),
+      );
+    } else if (param.in === "path") {
+      const raw = match.pathParams[param.name];
+      if (raw === undefined) continue;
+      out.push(
+        ...validateValue(param.schema, coerce(raw, param), "path", param.name).map((v) => ({
+          ...v,
+          pointer: param.name,
+        })),
+      );
+    }
+    // Header and cookie parameters are stage 3: the noise-to-signal ratio on
+    // real traffic needs measuring before they are worth reporting.
+  }
+  return out;
+}
+
+/** Validate one captured request against the endpoint it matched. */
+export function validateFlow(match: Match, sample: FlowSample): ValidationResult {
+  const notes: string[] = [];
+  const violations: Violation[] = [...validateParams(match, sample)];
+
+  const statusViolation = (): Violation => ({
+    where: "status",
+    pointer: "",
+    expected: `one of ${Object.keys(match.endpoint.responses).join(", ") || "nothing documented"}`,
+    actual: String(sample.status),
+  });
+
+  if (!sample.hasBodies) {
+    notes.push("Loaded from history — bodies were not captured, so only the call was counted.");
+    if (sample.status !== undefined && !responseSpecFor(match.endpoint, sample.status)) {
+      violations.push(statusViolation());
+    }
+    return { violations, notes };
+  }
+
+  violations.push(
+    ...validateBody(
+      match.endpoint.requestBody,
+      sample.requestBody,
+      sample.requestContentType,
+      "request.body",
+      notes,
+    ),
+  );
+
+  if (sample.status === undefined) return { violations, notes };
+
+  const response = responseSpecFor(match.endpoint, sample.status);
+  if (!response) {
+    violations.push(statusViolation());
+    return { violations, notes };
+  }
+
+  const declared = response.body.contentTypes;
+  if (
+    declared.length > 0 &&
+    sample.responseContentType &&
+    !declared.some((c) => c.split(";")[0].trim().toLowerCase() === sample.responseContentType)
+  ) {
+    violations.push({
+      where: "content-type",
+      pointer: "",
+      expected: declared.join(", "),
+      actual: sample.responseContentType,
+    });
+  }
+
+  violations.push(
+    ...validateBody(
+      response.body,
+      sample.responseBody,
+      sample.responseContentType,
+      "response.body",
+      notes,
+    ),
+  );
+
+  return { violations, notes };
 }
