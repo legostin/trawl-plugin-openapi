@@ -1,0 +1,1 @@
+(function(n){"use strict";const e=window.__TRAWL__;function t(){return n.jsx("div",{className:"p-4 text-muted-foreground",children:"OpenAPI"})}e&&e.registerMode({id:"openapi",label:"OpenAPI",component:t})})(ReactJSXRuntime);
