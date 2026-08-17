@@ -1,5 +1,6 @@
 import { load } from "js-yaml";
-import type { BodySpec, Endpoint, Param, ParamIn, Schema, SpecDoc } from "./model";
+import type { BodySpec, Endpoint, Param, ParamIn, SpecDoc } from "./model";
+import { resolveSchema } from "./refs";
 
 export type ParseResult = { ok: true; doc: SpecDoc } | { ok: false; error: string };
 
@@ -33,7 +34,7 @@ function str(v: unknown, fallback = ""): string {
   return typeof v === "string" ? v : fallback;
 }
 
-function contentOf(container: unknown): BodySpec {
+function contentOf(container: unknown, root: Dict): BodySpec {
   const content = isDict(container) ? container.content : undefined;
   if (!isDict(content)) return { contentTypes: [] };
   const contentTypes = Object.keys(content);
@@ -41,23 +42,26 @@ function contentOf(container: unknown): BodySpec {
   const media = isDict(first) ? first : {};
   return {
     contentTypes,
-    schema: isDict(media.schema) ? (media.schema as Schema) : undefined,
+    schema: resolveSchema(media.schema, root),
     example: media.example,
   };
 }
 
-function paramsOf(raw: unknown): Param[] {
+function paramsOf(raw: unknown, root: Dict): Param[] {
   if (!Array.isArray(raw)) return [];
   const out: Param[] = [];
   for (const item of raw) {
     if (!isDict(item)) continue;
-    const where = str(item.in);
+    // A parameter can itself be a $ref into components/parameters.
+    const p = typeof item.$ref === "string" ? resolveSchema(item, root) : item;
+    if (!isDict(p)) continue;
+    const where = str(p.in);
     if (!["path", "query", "header", "cookie"].includes(where)) continue;
     out.push({
-      name: str(item.name),
+      name: str(p.name),
       in: where as ParamIn,
-      required: item.required === true || where === "path",
-      schema: isDict(item.schema) ? (item.schema as Schema) : undefined,
+      required: p.required === true || where === "path",
+      schema: resolveSchema(p.schema, root),
     });
   }
   return out;
@@ -86,14 +90,14 @@ function endpointsOf(root: Dict): Endpoint[] {
   const out: Endpoint[] = [];
   for (const [pathTemplate, pathItemRaw] of Object.entries(paths)) {
     if (!isDict(pathItemRaw)) continue;
-    const pathLevel = paramsOf(pathItemRaw.parameters);
+    const pathLevel = paramsOf(pathItemRaw.parameters, root);
     for (const method of METHODS) {
       const op = pathItemRaw[method];
       if (!isDict(op)) continue;
       const responses: Record<string, BodySpec> = {};
       if (isDict(op.responses)) {
         for (const [status, body] of Object.entries(op.responses)) {
-          responses[status] = contentOf(body);
+          responses[status] = contentOf(body, root);
         }
       }
       out.push({
@@ -102,8 +106,8 @@ function endpointsOf(root: Dict): Endpoint[] {
         operationId: typeof op.operationId === "string" ? op.operationId : undefined,
         tags: Array.isArray(op.tags) ? op.tags.filter((t): t is string => typeof t === "string") : [],
         summary: typeof op.summary === "string" ? op.summary : undefined,
-        params: mergeParams(pathLevel, paramsOf(op.parameters)),
-        requestBody: isDict(op.requestBody) ? contentOf(op.requestBody) : undefined,
+        params: mergeParams(pathLevel, paramsOf(op.parameters, root)),
+        requestBody: isDict(op.requestBody) ? contentOf(op.requestBody, root) : undefined,
         responses,
         security: securityOf(op, root),
       });

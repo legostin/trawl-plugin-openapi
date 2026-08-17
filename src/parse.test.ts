@@ -95,3 +95,27 @@ test("a document with no version marker is refused rather than guessed at", () =
   const r = parseSpec(JSON.stringify({ info: { title: "x" }, paths: {} }));
   expect(r.ok).toBe(false);
 });
+
+test("schemas referenced from components arrive inlined on the endpoint", () => {
+  const doc = {
+    openapi: "3.0.0",
+    info: { title: "T", version: "1" },
+    components: {
+      schemas: { User: { type: "object", properties: { id: { type: "string" } } } },
+    },
+    paths: {
+      "/users": {
+        get: {
+          responses: {
+            "200": {
+              content: { "application/json": { schema: { $ref: "#/components/schemas/User" } } },
+            },
+          },
+        },
+      },
+    },
+  };
+  const r = parseSpec(JSON.stringify(doc));
+  if (!r.ok) throw new Error(r.error);
+  expect(r.doc.endpoints[0].responses["200"].schema?.properties?.id.type).toBe("string");
+});
