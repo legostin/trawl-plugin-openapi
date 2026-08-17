@@ -1,8 +1,6 @@
-const host = window.__TRAWL__;
+import { OpenApiApp } from "./OpenApiApp";
 
-function OpenApiApp() {
-  return <div className="p-4 text-muted-foreground">OpenAPI</div>;
-}
+const host = window.__TRAWL__;
 
 if (host) {
   host.registerMode({ id: "openapi", label: "OpenAPI", component: OpenApiApp });
