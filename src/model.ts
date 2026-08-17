@@ -66,6 +66,14 @@ export interface SpecSource {
   headers?: [string, string][];
 }
 
+export interface SpecChange {
+  /** `"GET /users/{id}"` — the endpoint that changed. */
+  key: string;
+  detail: string;
+  /** True when an existing client could break because of this. */
+  breaking: boolean;
+}
+
 export interface Spec extends SpecDoc {
   id: string;
   source: SpecSource;
@@ -73,6 +81,9 @@ export interface Spec extends SpecDoc {
   hosts: string[];
   fetchedAt: number;
   raw: string;
+  /** What changed at the last refresh, kept so the Drift tab survives a restart. */
+  lastDiff?: SpecChange[];
+  lastDiffAt?: number;
 }
 
 export type ViolationWhere =
