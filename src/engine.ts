@@ -4,7 +4,8 @@ import { endpointKey, type Verdict } from "./model";
 import { Aggregates, windowFilter, type SessionWindow } from "./session";
 import { SpecStore } from "./store";
 import type { FlowQuery, FlowRow, HostFlow, TrawlHost } from "./trawl";
-import { validateFlow } from "./validate";
+import { Drift } from "./drift";
+import { MAX_BODY, responseSpecFor, validateFlow } from "./validate";
 
 const VERDICT_CAP = 2000;
 const PAGE = 500;
@@ -16,6 +17,7 @@ const PAGE = 500;
 export class Engine {
   readonly store: SpecStore;
   readonly aggregates = new Aggregates();
+  readonly drift = new Drift();
   window: SessionWindow = "capture";
   /** Set while history is being replayed, for the UI to show. */
   backfilling = false;
@@ -77,6 +79,7 @@ export class Engine {
    *  flows are counted and status-checked but never body-validated. */
   async rebuild(): Promise<void> {
     this.aggregates.reset();
+    this.drift.reset();
     this.verdicts.clear();
     this.recentByEndpoint.clear();
     this.backfilling = true;
@@ -114,6 +117,24 @@ export class Engine {
     const match: Match | null = bound ? matchFlow(specs, sample) : null;
     const result = match ? validateFlow(match, sample) : { violations: [], notes: [] };
     this.aggregates.record(sample, match, result);
+
+    // Drift needs a real body, so only live samples feed it. Parsing here
+    // costs one extra JSON.parse per matched response — cheap next to the
+    // validation that already ran, and only for bodies small enough to check.
+    if (match && sample.hasBodies && sample.responseBody && sample.status !== undefined) {
+      const response = responseSpecFor(match.endpoint, sample.status);
+      if (response?.body.schema && sample.responseBody.length <= MAX_BODY) {
+        try {
+          this.drift.record(
+            endpointKey(match.endpoint),
+            response.body.schema,
+            JSON.parse(sample.responseBody),
+          );
+        } catch {
+          // A body that does not parse is already reported as a violation.
+        }
+      }
+    }
 
     const verdict: Verdict = {
       flowId: sample.id,

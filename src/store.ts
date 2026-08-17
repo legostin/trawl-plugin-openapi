@@ -2,6 +2,7 @@ import type { Spec, SpecSource } from "./model";
 import { uid } from "./model";
 import { parseSpec } from "./parse";
 import { fetchSpecText } from "./sources";
+import { diffSpecs } from "./specdiff";
 import { decodeSpecs, encodeSpecs } from "./storage";
 import type { TrawlHost } from "./trawl";
 
@@ -93,7 +94,15 @@ export class SpecStore {
     if (!fetched.ok) return fetched;
     const parsed = parseSpec(fetched.text);
     if (!parsed.ok) return { ok: false, error: parsed.error };
-    const updated: Spec = { ...current, ...parsed.doc, fetchedAt: Date.now(), raw: fetched.text };
+    const changes = diffSpecs(current, parsed.doc);
+    const updated: Spec = {
+      ...current,
+      ...parsed.doc,
+      fetchedAt: Date.now(),
+      raw: fetched.text,
+      lastDiff: changes,
+      lastDiffAt: Date.now(),
+    };
     this.specs = this.specs.map((s) => (s.id === id ? updated : s));
     await this.persist();
     this.emit();
