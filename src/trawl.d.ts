@@ -23,6 +23,60 @@ export interface EnvVar {
   value: string;
 }
 
+export interface UrlParts {
+  scheme: string;
+  host: string;
+  port: number;
+  /** Includes the query string. */
+  path: string;
+}
+
+export interface HttpMessage {
+  headers: [string, string][];
+  body: string | null;
+  bodyB64?: string | null;
+}
+
+export interface ResponseMessage extends HttpMessage {
+  status: number;
+}
+
+export interface HostFlow {
+  id: number;
+  timestamp: number;
+  method: string;
+  url: UrlParts;
+  request: HttpMessage;
+  response: ResponseMessage | null;
+  state: string;
+  error: string | null;
+}
+
+/** Flattened history row — no headers, no body. */
+export interface FlowRow {
+  id: number;
+  ts: number;
+  method: string;
+  scheme: string;
+  host: string;
+  port: number;
+  path: string;
+  status: number | null;
+  projectId: string | null;
+  state: string;
+  error: string | null;
+}
+
+export interface FlowQuery {
+  query?: string;
+  method?: string;
+  statusClass?: string;
+  host?: string;
+  projectId?: string;
+  startTs?: number;
+  endTs?: number;
+}
+
 export interface TrawlHost {
   version: string;
   react: typeof React;
@@ -36,6 +90,21 @@ export interface TrawlHost {
     onChange(cb: () => void): () => void;
   };
   secrets: { get(name: string): Promise<string | null> };
+  flows: {
+    query(filter: FlowQuery, limit?: number, offset?: number): Promise<FlowRow[]>;
+    count(filter: FlowQuery): Promise<number>;
+    subscribe(cb: (flow: unknown) => void): () => void;
+  };
+  util: { bodyText(msg: unknown): string };
+  events: {
+    on(type: string, cb: (payload: unknown) => void): () => void;
+    emit(type: string, payload?: unknown): void;
+  };
+  registerFlowAction(action: {
+    id: string;
+    label: string;
+    run(flow: HostFlow): void;
+  }): void;
   ui: {
     MethodBadge: React.ComponentType<{ method: string; className?: string }>;
     Button: React.ComponentType<Record<string, unknown>>;

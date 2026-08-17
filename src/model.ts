@@ -75,6 +75,40 @@ export interface Spec extends SpecDoc {
   raw: string;
 }
 
+export type ViolationWhere =
+  | "response.body"
+  | "request.body"
+  | "query"
+  | "path"
+  | "header"
+  | "status"
+  | "content-type";
+
+export interface Violation {
+  where: ViolationWhere;
+  /** JSON pointer inside the body, or the parameter name. */
+  pointer: string;
+  expected: string;
+  actual: string;
+}
+
+export type VerdictStatus = "ok" | "violations" | "undocumented" | "unmapped";
+
+export interface Verdict {
+  flowId: number;
+  ts: number;
+  specId?: string;
+  /** `"GET /users/{id}"` — the matched endpoint. */
+  endpointKey?: string;
+  status: VerdictStatus;
+  httpStatus?: number;
+  violations: Violation[];
+  /** What was deliberately not checked, in words the UI can show. */
+  notes: string[];
+  /** Other specs whose endpoint also matched; validation used `specId`. */
+  alsoMatched?: string[];
+}
+
 export function endpointKey(e: Endpoint): string {
   return `${e.method} ${e.pathTemplate}`;
 }
