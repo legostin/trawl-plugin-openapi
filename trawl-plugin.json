@@ -1,8 +1,8 @@
 {
   "id": "openapi",
   "name": "OpenAPI",
-  "version": "0.1.0",
-  "description": "Browse OpenAPI/Swagger specs inside Trawl — load from a URL, a file or pasted text.",
+  "version": "0.2.0",
+  "description": "OpenAPI/Swagger specs inside Trawl — browse them, and check captured traffic against them.",
   "author": "legostin",
   "entry": "dist/plugin.js",
   "apiVersion": "1.10.0"

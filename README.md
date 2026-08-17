@@ -25,8 +25,27 @@ pnpm test
 pnpm build     # emits dist/plugin.js, which is committed
 ```
 
+## Spec against traffic
+
+Captured requests are matched to the endpoint that documents them and checked
+against its schema. Each endpoint shows how many times it was called in the
+chosen session window — since capture started, the whole project, or whatever
+the traffic filter currently selects — along with the violations found and the
+calls nothing documents at all.
+
+Bind the spec to a host first: specs whose `servers` are relative (`/api/v3`)
+have nothing to match on until you say which host they belong to.
+
+Two limits, stated rather than hidden. History carries no bodies (Trawl stores
+none), so replayed flows are counted and status-checked but never
+body-validated — the panel says so. And anything the plugin does not fully
+understand, from an external `$ref` to a non-JSON payload, is skipped with a
+note instead of being reported as a violation.
+
+From the traffic list, **Open in spec** jumps to the endpoint a request
+matched.
+
 ## Roadmap
 
-Stage 1 (this release) is the reader. Next: matching captured traffic against
-the spec, validation, coverage and drift, then Try-it into the HTTP Client,
-mocks, contracts, and MCP tools.
+Coverage and drift screens, then Try-it into the HTTP Client, mocks, contracts,
+and MCP tools.
