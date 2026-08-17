@@ -45,7 +45,18 @@ note instead of being reported as a violation.
 From the traffic list, **Open in spec** jumps to the endpoint a request
 matched.
 
+## Coverage and drift
+
+The **coverage** tab ranks every endpoint by what needs attention — violations
+first, then never-called, then healthy — and shows what share of the API the
+session actually exercised. **Undocumented** lists calls on a bound host that
+match no endpoint. **Drift** compares the fields the wire carries against the
+fields the schema describes, and shows what the last spec refresh changed, with
+breaking changes marked.
+
+Drift is measured from live responses only: history keeps no bodies.
+
 ## Roadmap
 
-Coverage and drift screens, then Try-it into the HTTP Client, mocks, contracts,
+Try-it into the HTTP Client, mocks, contracts,
 and MCP tools.
