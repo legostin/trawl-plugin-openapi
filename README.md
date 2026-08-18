@@ -56,7 +56,23 @@ breaking changes marked.
 
 Drift is measured from live responses only: history keeps no bodies.
 
+## Acting on the spec
+
+**Try it** sends an endpoint to the HTTP Client with path values taken from a
+real previous call when there was one, required query parameters filled from
+the schema, and `Bearer {{token}}` for secured endpoints. **Mock** creates a
+Trawl handler rule that answers from the spec's own example without touching
+the network; press it again to remove the rule. **Import as collection** sends
+every endpoint to the HTTP Client at once, and **Create contract** hands the
+response example to Schema Check — which in turn reports back, so an endpoint
+already covered by a contract shows its last status.
+
+Generated values are deliberately obvious (`"string"`, `0`) unless the spec
+supplies an `example`: a realistic-looking fake gets mistaken for real data.
+
+Buttons whose plugin is missing are disabled with the reason. Collection import
+needs HTTP Client 0.8.0, contracts need Schema Check 0.3.0.
+
 ## Roadmap
 
-Try-it into the HTTP Client, mocks, contracts,
-and MCP tools.
+MCP tools for agents, then the flow-card tab in the request details.
