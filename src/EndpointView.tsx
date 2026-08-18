@@ -1,4 +1,15 @@
-import type { Endpoint, Schema } from "./model";
+import type { Engine } from "./engine";
+import { exampleFor } from "./example";
+import { buildMock } from "./mock";
+import { endpointKey, type Endpoint, type Schema, type Spec } from "./model";
+import {
+  contractFor,
+  createContract,
+  hasHttpClient,
+  hasSchemaCheck,
+  openInClient,
+} from "./neighbours";
+import { buildRequest } from "./tryit";
 
 const host = window.__TRAWL__!;
 const { MethodBadge } = host.ui;
@@ -34,7 +45,84 @@ function SchemaTree({ schema, name, depth = 0 }: { schema?: Schema; name?: strin
   );
 }
 
-export function EndpointView({ endpoint }: { endpoint: Endpoint | null }) {
+function Actions({ engine, spec, endpoint }: { engine: Engine; spec: Spec; endpoint: Endpoint }) {
+  const key = endpointKey(endpoint);
+  const mockId = spec.mocks?.[key];
+  const statuses = Object.keys(endpoint.responses).filter((s) => /^\d+$/.test(s));
+  const mockStatus = Number(statuses.find((s) => s.startsWith("2")) ?? statuses[0] ?? 200);
+
+  const tryIt = () => openInClient(buildRequest(spec, endpoint, engine.lastCall(spec.id, key)));
+
+  const toggleMock = async () => {
+    if (mockId) {
+      await host.rules.remove(mockId);
+      await engine.store.clearMock(spec.id, key);
+      return;
+    }
+    const id = await host.rules.create(buildMock(spec, endpoint, mockStatus), { open: false });
+    await engine.store.setMock(spec.id, key, id);
+  };
+
+  const asContract = () => {
+    const response = endpoint.responses[String(mockStatus)];
+    createContract({
+      name: `${endpoint.method} ${endpoint.pathTemplate}`,
+      method: endpoint.method,
+      pattern: `${spec.hosts[0] ?? "*"}${endpoint.pathTemplate.replace(/\{[^}]+\}/g, "*")}`,
+      body: JSON.stringify(exampleFor(response?.schema) ?? {}, null, 2),
+      status: mockStatus,
+    });
+  };
+
+  const contract = spec.hosts[0]
+    ? contractFor(
+        endpoint.method,
+        `${spec.hosts[0]}${endpoint.pathTemplate.replace(/\{[^}]+\}/g, "*")}`,
+      )
+    : undefined;
+
+  return (
+    <div className="flex items-center gap-3 text-xs">
+      <button
+        className="underline disabled:no-underline disabled:opacity-40"
+        disabled={!hasHttpClient()}
+        title={hasHttpClient() ? "" : "The HTTP Client plugin is not installed"}
+        onClick={tryIt}
+      >
+        Try it
+      </button>
+      <button className="underline" onClick={() => void toggleMock()}>
+        {mockId ? `Mock active (${mockStatus}) — remove` : `Mock ${mockStatus}`}
+      </button>
+      <button
+        className="underline disabled:no-underline disabled:opacity-40"
+        disabled={!hasSchemaCheck()}
+        title={hasSchemaCheck() ? "" : "Schema Check 0.3.0 or newer is not installed"}
+        onClick={asContract}
+      >
+        Create contract
+      </button>
+      {contract && (
+        <span
+          className={contract.lastStatus === "fail" ? "text-red-400" : "text-muted-foreground"}
+          title={contract.name}
+        >
+          contract: {contract.lastStatus}
+        </span>
+      )}
+    </div>
+  );
+}
+
+export function EndpointView({
+  engine,
+  spec,
+  endpoint,
+}: {
+  engine: Engine;
+  spec: Spec | null;
+  endpoint: Endpoint | null;
+}) {
   if (!endpoint) {
     return <p className="p-4 text-sm text-muted-foreground">Pick an endpoint on the left.</p>;
   }
@@ -50,6 +138,7 @@ export function EndpointView({ endpoint }: { endpoint: Endpoint | null }) {
           <span className="text-xs text-muted-foreground">· {endpoint.operationId}</span>
         )}
       </div>
+      {spec && <Actions engine={engine} spec={spec} endpoint={endpoint} />}
       {endpoint.summary && <p className="text-sm text-muted-foreground">{endpoint.summary}</p>}
       {endpoint.security.length > 0 && (
         <p className="text-xs text-muted-foreground">security: {endpoint.security.join(", ")}</p>

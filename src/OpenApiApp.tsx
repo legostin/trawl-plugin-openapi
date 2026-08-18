@@ -9,7 +9,9 @@ import { RealityPanel } from "./RealityPanel";
 import { getEngine } from "./engine";
 import type { Endpoint, Spec } from "./model";
 import { endpointKey } from "./model";
+import { hasCollectionImport, importCollection, watchContracts } from "./neighbours";
 import { onSelection, takeSelection } from "./selection";
+import { buildRequest } from "./tryit";
 import type { SessionWindow } from "./session";
 
 const host = window.__TRAWL__!;
@@ -35,6 +37,8 @@ export function OpenApiApp() {
   };
 
   useEffect(() => engine?.subscribe(() => bump((n) => n + 1)), [engine]);
+  // Schema Check publishes its contract list; the badge follows it.
+  useEffect(() => watchContracts(() => bump((n) => n + 1)), []);
 
   // A flow action may have asked for an endpoint before this mode was mounted.
   useEffect(() => {
@@ -118,6 +122,22 @@ export function OpenApiApp() {
               Refresh
             </button>
           )}
+          {hasCollectionImport() && active && (
+            <button
+              className="underline"
+              onClick={() =>
+                importCollection(
+                  active.title,
+                  active.endpoints.map((e) => ({
+                    name: `${e.method} ${e.pathTemplate}`,
+                    ...buildRequest(active, e, engine.lastCall(active.id, endpointKey(e))),
+                  })),
+                )
+              }
+            >
+              Import as collection
+            </button>
+          )}
           <button className="underline" onClick={() => setAdding(true)}>
             Add spec
           </button>
@@ -166,7 +186,7 @@ export function OpenApiApp() {
             />
           </div>
           <div className="flex-1 overflow-auto">
-            <EndpointView endpoint={selected} />
+            <EndpointView engine={engine} spec={active} endpoint={selected} />
           </div>
           <div className="w-80 border-l border-border overflow-auto">
             <RealityPanel engine={engine} spec={active} endpoint={selected} />
