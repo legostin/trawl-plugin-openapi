@@ -1,6 +1,7 @@
 import { coverageRows, coverageSummary } from "./coverage";
 import type { Engine } from "./engine";
 import type { Endpoint, Spec } from "./model";
+import { EndpointGrid, TagHealth } from "./Summary";
 
 const host = window.__TRAWL__!;
 const { MethodBadge } = host.ui;
@@ -32,10 +33,14 @@ export function CoverageView({
 
   return (
     <div className="p-3">
-      <p className="text-sm mb-3">
+      <p className="text-sm">
         {summary.called} of {summary.total} endpoints called
         <span className="text-muted-foreground"> · {summary.percent}% in this window</span>
       </p>
+      <div className="my-3 space-y-3">
+        <EndpointGrid engine={engine} spec={spec} onSelect={onSelect} />
+        <TagHealth engine={engine} spec={spec} />
+      </div>
       <table className="w-full text-xs">
         <thead className="text-muted-foreground">
           <tr>

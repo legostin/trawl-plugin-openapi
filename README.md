@@ -84,6 +84,22 @@ cannot.
 
 Nothing here mutates: mocks and contracts stay a human action.
 
+## Reading it at a glance
+
+Every endpoint in the tree carries a status strip, a call count and a sparkline
+of when those calls happened. The endpoint card leads with the verdict and then
+shows **the last real response with its problems marked on the lines they
+happened** — a red line for a value that broke the schema, an amber one for a
+field the spec never mentions. A pointer like `/data/items/3/price` tells you
+where to look; this shows you.
+
+Above the tabs sit five numbers — coverage, calls, violations, undocumented
+calls, drift fields — and the coverage tab adds a square per endpoint plus
+per-tag health bars, so the shape of the whole API is one glance rather than a
+scroll.
+
+Status colours never travel alone: each carries a glyph and a word.
+
 ## In the request card
 
 On Trawl 1.12.0 and newer the plugin adds an **OpenAPI** tab to the request

@@ -6,6 +6,7 @@ import { EndpointTree } from "./EndpointTree";
 import { EndpointView } from "./EndpointView";
 import { HostBindings } from "./HostBindings";
 import { RealityPanel } from "./RealityPanel";
+import { MetricRow } from "./Summary";
 import { getEngine } from "./engine";
 import type { Endpoint, Spec } from "./model";
 import { endpointKey } from "./model";
@@ -152,6 +153,12 @@ export function OpenApiApp() {
           </button>
         </div>
       </div>
+
+      {active && (
+        <div className="px-3 py-2 border-b border-border">
+          <MetricRow engine={engine} spec={active} />
+        </div>
+      )}
 
       <div className="flex gap-3 px-3 py-1.5 border-b border-border text-xs">
         {(["browse", "coverage", "undocumented", "drift"] as const).map((t) => (
