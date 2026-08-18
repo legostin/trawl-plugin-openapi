@@ -102,6 +102,15 @@ export interface TrawlHost {
     known(): { type: string; lastPayload?: unknown }[];
     describe?(type: string, meta: Record<string, unknown>): void;
   };
+  mcp: {
+    registerTool(spec: {
+      name: string;
+      description: string;
+      inputSchema: Record<string, unknown>;
+      handler: (args: unknown) => unknown | Promise<unknown>;
+      timeoutMs?: number;
+    }): Promise<void>;
+  };
   rules: {
     create(
       draft: { name: string; pattern: string; phase: string; script: string },

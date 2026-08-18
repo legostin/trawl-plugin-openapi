@@ -174,6 +174,11 @@ export class Engine {
     this.recentByEndpoint.set(key, list.slice(0, 20));
   }
 
+  /** Every verdict still in the cache, oldest first. */
+  allVerdicts(): Verdict[] {
+    return [...this.verdicts.values()];
+  }
+
   verdictFor(flowId: number): Verdict | undefined {
     return this.verdicts.get(flowId);
   }

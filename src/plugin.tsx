@@ -1,6 +1,7 @@
 import { startEngine } from "./engine";
 import { sampleFromFlow } from "./flow";
 import { matchFlow } from "./match";
+import { registerMcpTools } from "./mcp";
 import { endpointKey } from "./model";
 import { OpenApiApp } from "./OpenApiApp";
 import { requestSelection } from "./selection";
@@ -12,6 +13,9 @@ if (host) {
   void engine.start();
 
   host.registerMode({ id: "openapi", label: "OpenAPI", component: OpenApiApp });
+
+  // Init-time only: that is how the host attributes the tools to this plugin.
+  registerMcpTools(host, engine);
 
   // Until the host grows a flow panel (stage 7), this button is the bridge
   // from a captured request to the endpoint that documents it.

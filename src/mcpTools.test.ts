@@ -10,7 +10,7 @@ import {
   violations,
   type McpDeps,
 } from "./mcpTools";
-import type { Endpoint, Spec, Verdict } from "./model";
+import type { Endpoint, Schema, Spec, Verdict } from "./model";
 
 const ep = (method: string, pathTemplate: string, patch: Partial<Endpoint> = {}): Endpoint => ({
   method,
@@ -94,7 +94,7 @@ test("endpoint_schema returns parameters and the response schema", () => {
 });
 
 test("endpoint_schema truncates a giant schema instead of flooding the agent", () => {
-  const wide: Record<string, unknown> = {};
+  const wide: Record<string, Schema> = {};
   for (let i = 0; i < 4000; i += 1) wide[`field${i}`] = { type: "string" };
   const big: Spec = {
     ...spec,
