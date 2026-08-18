@@ -24,6 +24,20 @@ export function hostsOf(servers: string[]): string[] {
   return [...hosts];
 }
 
+/**
+ * Re-read a stored spec from its own text.
+ *
+ * The endpoints on disk are a cache of whatever the parser produced when the
+ * spec was added, so without this every parser improvement would stop at specs
+ * added earlier. A document that no longer parses keeps what was stored —
+ * losing the user's spec over a failed re-parse would be the worse outcome.
+ */
+function reparse(spec: Spec): Spec {
+  if (!spec.raw) return spec;
+  const parsed = parseSpec(spec.raw);
+  return parsed.ok ? { ...spec, ...parsed.doc } : spec;
+}
+
 /** The plugin's spec list: persisted per project by the host's storage. */
 export class SpecStore {
   private specs: Spec[] = [];
@@ -54,7 +68,7 @@ export class SpecStore {
 
   async load(): Promise<void> {
     const { specs, error } = decodeSpecs(await this.host.storage.get(KEY));
-    this.specs = specs;
+    this.specs = specs.map(reparse);
     this.loadError = error;
     this.emit();
   }
