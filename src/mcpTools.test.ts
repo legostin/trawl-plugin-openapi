@@ -43,7 +43,7 @@ const spec: Spec = {
 const deps = (overrides: Partial<McpDeps> = {}): McpDeps => ({
   specs: () => [spec],
   window: () => "capture",
-  stats: () => ({ calls: 0, violations: 0 }),
+  stats: () => ({ calls: 0, violations: 0, moments: [] }),
   undocumented: () => [],
   verdicts: () => [],
   drift: () => null,
@@ -120,7 +120,7 @@ test("endpoint_schema refuses an unknown endpoint rather than returning nothing"
 
 test("coverage reports the window, the summary and the rows", () => {
   const stats = (_specId: string, key: string) =>
-    key === "GET /pet/{petId}" ? { calls: 4, violations: 1 } : { calls: 0, violations: 0 };
+    key === "GET /pet/{petId}" ? { calls: 4, violations: 1, moments: [] } : { calls: 0, violations: 0, moments: [] };
   const c = coverage(deps({ stats }), {});
   expect(c.window).toBe("capture");
   expect(c.summary).toEqual({ total: 3, called: 1, percent: 33 });

@@ -20,10 +20,16 @@ export function windowFilter(window: SessionWindow, ctx: WindowContext): FlowQue
   return window === "capture" ? { ...base, startTs: ctx.captureStartedAt } : base;
 }
 
+/** How many moments back the sparkline reads. Bounded on purpose: a busy
+ *  endpoint would otherwise grow this list without end. */
+const MOMENT_CAP = 40;
+
 export interface EndpointStats {
   calls: number;
   violations: number;
   lastTs?: number;
+  /** Timestamps of the most recent calls, oldest first. */
+  moments: number[];
 }
 
 export interface UndocumentedRow {
@@ -34,7 +40,7 @@ export interface UndocumentedRow {
 }
 
 const UNDOCUMENTED_CAP = 200;
-const EMPTY: EndpointStats = { calls: 0, violations: 0 };
+const EMPTY: EndpointStats = { calls: 0, violations: 0, moments: [] };
 
 /** Per-endpoint counters plus the tally of calls nothing documents. */
 export class Aggregates {
@@ -61,10 +67,12 @@ export class Aggregates {
       return;
     }
     const key = `${match.spec.id} ${endpointKey(match.endpoint)}`;
-    const current = this.stats.get(key) ?? { calls: 0, violations: 0 };
+    const current = this.stats.get(key) ?? { calls: 0, violations: 0, moments: [] };
     current.calls += 1;
     if (result.violations.length > 0) current.violations += 1;
     current.lastTs = Math.max(current.lastTs ?? 0, sample.ts);
+    current.moments.push(sample.ts);
+    if (current.moments.length > MOMENT_CAP) current.moments.shift();
     this.stats.set(key, current);
   }
 

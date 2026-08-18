@@ -111,3 +111,24 @@ test("the filter window defers to the host's current traffic filter", () => {
     windowFilter("filter", { captureStartedAt: 500, projectId: "p", hostFilter: { method: "GET" } }),
   ).toEqual({ method: "GET" });
 });
+
+test("call moments are kept for the sparkline, newest last", () => {
+  const agg = new Aggregates();
+  agg.record(sample({ id: 1, ts: 10 }), match, { violations: [], notes: [] });
+  agg.record(sample({ id: 2, ts: 30 }), match, { violations: [], notes: [] });
+  expect(agg.forEndpoint("s", "GET /users/{id}").moments).toEqual([10, 30]);
+});
+
+test("the moment buffer is bounded — a busy endpoint must not grow forever", () => {
+  const agg = new Aggregates();
+  for (let i = 0; i < 200; i += 1) {
+    agg.record(sample({ id: i, ts: i }), match, { violations: [], notes: [] });
+  }
+  const moments = agg.forEndpoint("s", "GET /users/{id}").moments;
+  expect(moments.length).toBeLessThanOrEqual(40);
+  expect(moments[moments.length - 1]).toBe(199);
+});
+
+test("an endpoint that was never called reports no moments", () => {
+  expect(new Aggregates().forEndpoint("s", "GET /nope").moments).toEqual([]);
+});

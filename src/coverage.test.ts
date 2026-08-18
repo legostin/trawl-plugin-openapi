@@ -25,7 +25,7 @@ const spec = (endpoints: Endpoint[]): Spec => ({
 });
 
 const from = (table: Record<string, EndpointStats>) => (key: string) =>
-  table[key] ?? { calls: 0, violations: 0 };
+  table[key] ?? { calls: 0, violations: 0, moments: [] };
 
 test("every endpoint gets a row, called or not", () => {
   const rows = coverageRows(spec([ep("GET", "/a"), ep("GET", "/b")]), from({}));
@@ -38,8 +38,8 @@ test("endpoints with violations come first, then never-called, then healthy ones
   const rows = coverageRows(
     spec([ep("GET", "/healthy"), ep("GET", "/never"), ep("GET", "/broken")]),
     from({
-      "GET /healthy": { calls: 9, violations: 0 },
-      "GET /broken": { calls: 2, violations: 2 },
+      "GET /healthy": { calls: 9, violations: 0, moments: [] },
+      "GET /broken": { calls: 2, violations: 2, moments: [] },
     }),
   );
   expect(rows.map((r) => r.key)).toEqual(["GET /broken", "GET /never", "GET /healthy"]);
@@ -48,7 +48,7 @@ test("endpoints with violations come first, then never-called, then healthy ones
 test("among equals, the busier endpoint sorts first", () => {
   const rows = coverageRows(
     spec([ep("GET", "/quiet"), ep("GET", "/busy")]),
-    from({ "GET /quiet": { calls: 1, violations: 0 }, "GET /busy": { calls: 50, violations: 0 } }),
+    from({ "GET /quiet": { calls: 1, violations: 0, moments: [] }, "GET /busy": { calls: 50, violations: 0, moments: [] } }),
   );
   expect(rows.map((r) => r.key)).toEqual(["GET /busy", "GET /quiet"]);
 });
@@ -56,7 +56,7 @@ test("among equals, the busier endpoint sorts first", () => {
 test("the summary counts endpoints touched, not calls made", () => {
   const rows = coverageRows(
     spec([ep("GET", "/a"), ep("GET", "/b"), ep("GET", "/c"), ep("GET", "/d")]),
-    from({ "GET /a": { calls: 30, violations: 0 } }),
+    from({ "GET /a": { calls: 30, violations: 0, moments: [] } }),
   );
   expect(coverageSummary(rows)).toEqual({ total: 4, called: 1, percent: 25 });
 });
