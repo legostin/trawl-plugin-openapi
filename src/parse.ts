@@ -62,6 +62,7 @@ function paramsOf(raw: unknown, root: Dict): Param[] {
       name: str(p.name),
       in: where as ParamIn,
       required: p.required === true || where === "path",
+      description: typeof p.description === "string" ? p.description : undefined,
       schema: resolveSchema(p.schema, root),
     });
   }
@@ -107,6 +108,7 @@ function endpointsOf(root: Dict): Endpoint[] {
         operationId: typeof op.operationId === "string" ? op.operationId : undefined,
         tags: Array.isArray(op.tags) ? op.tags.filter((t): t is string => typeof t === "string") : [],
         summary: typeof op.summary === "string" ? op.summary : undefined,
+        description: typeof op.description === "string" ? op.description : undefined,
         params: mergeParams(pathLevel, paramsOf(op.parameters, root)),
         requestBody: isDict(op.requestBody) ? contentOf(op.requestBody, root) : undefined,
         responses,

@@ -30,6 +30,9 @@ function SchemaTree({ schema, name, depth = 0 }: { schema?: Schema; name?: strin
         {schema.enum ? ` [${schema.enum.map(String).join(", ")}]` : ""}
         {note && <span className="text-amber-400">{note}</span>}
       </span>
+      {schema.description && (
+        <span className="ml-2 text-muted-foreground/70">— {schema.description}</span>
+      )}
       {schema.properties &&
         Object.entries(schema.properties).map(([child, s]) => (
           <SchemaTree key={child} schema={s} name={child} depth={depth + 1} />
@@ -139,7 +142,10 @@ export function EndpointView({
         )}
       </div>
       {spec && <Actions engine={engine} spec={spec} endpoint={endpoint} />}
-      {endpoint.summary && <p className="text-sm text-muted-foreground">{endpoint.summary}</p>}
+      {endpoint.summary && <p className="text-sm">{endpoint.summary}</p>}
+      {endpoint.description && endpoint.description !== endpoint.summary && (
+        <p className="text-sm text-muted-foreground whitespace-pre-wrap">{endpoint.description}</p>
+      )}
       {endpoint.security.length > 0 && (
         <p className="text-xs text-muted-foreground">security: {endpoint.security.join(", ")}</p>
       )}
@@ -151,16 +157,23 @@ export function EndpointView({
           <section key={where}>
             <h3 className="text-xs uppercase tracking-wide text-muted-foreground mb-1">{where}</h3>
             {list.map((p) => (
-              <div key={p.name} className="font-mono text-xs leading-5">
-                {p.name}
-                {p.required && <span className="text-amber-400">*</span>}
-                <span className="text-muted-foreground">
-                  {" "}
-                  {Array.isArray(p.schema?.type)
-                    ? p.schema?.type.join(" | ")
-                    : (p.schema?.type ?? "any")}
-                  {p.schema?.enum ? ` [${p.schema.enum.map(String).join(", ")}]` : ""}
+              <div key={p.name} className="leading-5">
+                <span className="font-mono text-xs">
+                  {p.name}
+                  {p.required && <span className="text-amber-400">*</span>}
+                  <span className="text-muted-foreground">
+                    {" "}
+                    {Array.isArray(p.schema?.type)
+                      ? p.schema?.type.join(" | ")
+                      : (p.schema?.type ?? "any")}
+                    {p.schema?.enum ? ` [${p.schema.enum.map(String).join(", ")}]` : ""}
+                  </span>
                 </span>
+                {(p.description ?? p.schema?.description) && (
+                  <span className="ml-2 text-xs text-muted-foreground">
+                    — {p.description ?? p.schema?.description}
+                  </span>
+                )}
               </div>
             ))}
           </section>

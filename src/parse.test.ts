@@ -119,3 +119,48 @@ test("schemas referenced from components arrive inlined on the endpoint", () => 
   if (!r.ok) throw new Error(r.error);
   expect(r.doc.endpoints[0].responses["200"].schema?.properties?.id.type).toBe("string");
 });
+
+test("descriptions survive parsing — they are what a reader came for", () => {
+  // The summary is a title; the description is the explanation. Dropping it
+  // leaves the endpoint card saying what the operation is called and nothing
+  // about what it does.
+  const doc = {
+    openapi: "3.0.0",
+    info: { title: "T", version: "1" },
+    paths: {
+      "/pet/{petId}": {
+        get: {
+          summary: "Find pet by ID.",
+          description: "Returns a single pet.",
+          parameters: [
+            {
+              name: "petId",
+              in: "path",
+              required: true,
+              description: "ID of pet to return",
+              schema: { type: "integer" },
+            },
+          ],
+          responses: {
+            "200": {
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: { name: { type: "string", description: "The pet's name" } },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  };
+  const r = parseSpec(JSON.stringify(doc));
+  if (!r.ok) throw new Error(r.error);
+  const e = r.doc.endpoints[0];
+  expect(e.description).toBe("Returns a single pet.");
+  expect(e.params[0].description).toBe("ID of pet to return");
+  expect(e.responses["200"].schema?.properties?.name.description).toBe("The pet's name");
+});

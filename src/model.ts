@@ -2,6 +2,8 @@
  *  carried through untouched and marked `incomplete` rather than guessed at. */
 export interface Schema {
   type?: string | string[];
+  /** The spec's own prose for this field — the reason a reader opened it. */
+  description?: string;
   format?: string;
   enum?: unknown[];
   const?: unknown;
@@ -26,6 +28,7 @@ export interface Param {
   name: string;
   in: ParamIn;
   required: boolean;
+  description?: string;
   schema?: Schema;
 }
 
@@ -40,7 +43,10 @@ export interface Endpoint {
   pathTemplate: string;
   operationId?: string;
   tags: string[];
+  /** A title. */
   summary?: string;
+  /** The explanation. Specs often carry only one of the two. */
+  description?: string;
   params: Param[];
   /** Keyed by the spec's own status keys: "200", "4XX", "default". */
   responses: Record<string, BodySpec>;
