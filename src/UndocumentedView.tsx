@@ -1,4 +1,5 @@
 import type { Engine } from "./engine";
+import { TONE } from "./tone";
 
 export function UndocumentedView({ engine }: { engine: Engine }) {
   const rows = engine.aggregates.undocumented();
@@ -32,7 +33,7 @@ export function UndocumentedView({ engine }: { engine: Engine }) {
         </tbody>
       </table>
       {dropped > 0 && (
-        <p className="mt-2 text-xs text-amber-400/80">
+        <p className="mt-2 text-xs" style={{ color: TONE.drift, opacity: 0.85 }}>
           {dropped} further call{dropped === 1 ? "" : "s"} were not listed — the tally stops at 200
           distinct paths.
         </p>

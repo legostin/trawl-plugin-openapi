@@ -2,14 +2,15 @@ import { coverageRows, coverageSummary } from "./coverage";
 import type { Engine } from "./engine";
 import type { Endpoint, Spec } from "./model";
 import { EndpointGrid, TagHealth } from "./Summary";
+import { TONE } from "./tone";
 
 const host = window.__TRAWL__!;
 const { MethodBadge } = host.ui;
 
-const TONE = {
-  violations: "text-red-400",
-  never: "text-muted-foreground",
-  called: "text-emerald-400",
+const STATE_COLOR = {
+  violations: TONE.violation,
+  never: undefined,
+  called: TONE.ok,
 } as const;
 
 // All three take the count so `LABEL[state](n)` type-checks as one signature.
@@ -61,7 +62,7 @@ export function CoverageView({
                 <span className="font-mono">{r.endpoint.pathTemplate}</span>
               </td>
               <td className="text-right">{r.calls || ""}</td>
-              <td className={`pl-3 ${TONE[r.state]}`}>{LABEL[r.state](r.violations)}</td>
+              <td className="pl-3" style={{ color: STATE_COLOR[r.state] }}>{LABEL[r.state](r.violations)}</td>
             </tr>
           ))}
         </tbody>

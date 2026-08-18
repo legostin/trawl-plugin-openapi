@@ -17,6 +17,15 @@ until you say which one it belongs to.
 
 Trawl → **Plugins** → install `legostin/trawl-plugin-openapi`.
 
+## A note for plugin authors
+
+A plugin cannot use arbitrary Tailwind classes. The host generates its CSS from
+*its own* sources, so a class the host never writes — `text-red-400`,
+`grid-cols-5`, `text-[11px]` — does not exist at runtime and the element simply
+renders unstyled. Semantic host tokens (`bg-card`, `text-muted-foreground`,
+`border-border`, `bg-accent`) are safe because the host uses them; everything
+else lives in `src/tone.ts` as inline styles.
+
 ## Develop
 
 ```sh

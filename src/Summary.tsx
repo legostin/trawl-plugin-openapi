@@ -2,14 +2,31 @@ import { coverageRows, coverageSummary } from "./coverage";
 import type { Engine } from "./engine";
 import { endpointKey, type Endpoint, type Spec } from "./model";
 import { HealthBar, STATUS, statusOf } from "./status";
+import { TONE } from "./tone";
 import { groupByTag } from "./tree";
 
-const Tile = ({ label, value, tone }: { label: string; value: string | number; tone?: string }) => (
-  <div className="rounded-md border border-border bg-card px-3 py-2">
-    <div className="text-[9px] uppercase tracking-wider text-muted-foreground">{label}</div>
-    <div className={`text-xl font-semibold tabular-nums leading-tight ${tone ?? ""}`}>{value}</div>
-  </div>
-);
+/** One number and its name, on one line — the row has to fit above the tabs. */
+function Tile({ label, value, color }: { label: string; value: string | number; color?: string }) {
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "baseline",
+        gap: 6,
+        padding: "2px 8px",
+        borderRadius: 6,
+        border: "1px solid var(--border, #232a36)",
+      }}
+    >
+      <span style={{ fontSize: 9, letterSpacing: ".06em", textTransform: "uppercase", opacity: 0.6 }}>
+        {label}
+      </span>
+      <span style={{ fontSize: 13, fontWeight: 600, fontVariantNumeric: "tabular-nums", color }}>
+        {value}
+      </span>
+    </span>
+  );
+}
 
 /** The five numbers that answer "what is going on with this API right now". */
 export function MetricRow({ engine, spec }: { engine: Engine; spec: Spec }) {
@@ -22,24 +39,20 @@ export function MetricRow({ engine, spec }: { engine: Engine; spec: Spec }) {
     .reduce((n, key) => n + (engine.drift.report(key)?.undocumented.length ?? 0), 0);
 
   return (
-    <div className="grid grid-cols-5 gap-2">
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
       <Tile label="coverage" value={`${summary.called}/${summary.total}`} />
       <Tile label="calls" value={totals.calls} />
       <Tile
         label="violations"
         value={totals.violations}
-        tone={totals.violations > 0 ? STATUS.violations.text : undefined}
+        color={totals.violations > 0 ? TONE.violation : undefined}
       />
       <Tile
         label="not in spec"
         value={undocumented}
-        tone={undocumented > 0 ? STATUS.drift.text : undefined}
+        color={undocumented > 0 ? TONE.drift : undefined}
       />
-      <Tile
-        label="drift fields"
-        value={driftFields}
-        tone={driftFields > 0 ? STATUS.drift.text : undefined}
-      />
+      <Tile label="drift" value={driftFields} color={driftFields > 0 ? TONE.drift : undefined} />
     </div>
   );
 }
@@ -50,7 +63,7 @@ export function TagHealth({ engine, spec }: { engine: Engine; spec: Spec }) {
   if (groups.length === 0) return null;
 
   return (
-    <div className="space-y-1">
+    <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
       {groups.map((group) => {
         let ok = 0;
         let bad = 0;
@@ -62,10 +75,12 @@ export function TagHealth({ engine, spec }: { engine: Engine; spec: Spec }) {
           else idle += 1;
         }
         return (
-          <div key={group.tag} className="flex items-center gap-2 text-[11px]">
-            <span className="w-24 truncate text-muted-foreground">{group.tag}</span>
+          <div key={group.tag} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11 }}>
+            <span className="text-muted-foreground" style={{ width: 96 }}>
+              {group.tag}
+            </span>
             <HealthBar ok={ok} bad={bad} idle={idle} />
-            <span className="w-6 text-right tabular-nums text-muted-foreground">
+            <span className="text-muted-foreground" style={{ width: 24, textAlign: "right" }}>
               {group.endpoints.length}
             </span>
           </div>
@@ -86,7 +101,7 @@ export function EndpointGrid({
   onSelect: (e: Endpoint) => void;
 }) {
   return (
-    <div className="flex flex-wrap gap-1">
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
       {spec.endpoints.map((e) => {
         const key = endpointKey(e);
         const stats = engine.aggregates.forEndpoint(spec.id, key);
@@ -96,7 +111,13 @@ export function EndpointGrid({
             key={key}
             onClick={() => onSelect(e)}
             title={`${key} — ${stats.calls} call${stats.calls === 1 ? "" : "s"}, ${STATUS[status].label}`}
-            className={`h-3 w-3 rounded-[2px] ${STATUS[status].bg} hover:ring-1 hover:ring-foreground/40`}
+            style={{
+              width: 11,
+              height: 11,
+              borderRadius: 2,
+              background: STATUS[status].color,
+              opacity: status === "never" ? 0.35 : 1,
+            }}
           />
         );
       })}

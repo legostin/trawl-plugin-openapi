@@ -11,6 +11,7 @@ import {
   openInClient,
 } from "./neighbours";
 import { STATUS, Sparkline, statusOf } from "./status";
+import { TONE } from "./tone";
 import { buildRequest } from "./tryit";
 
 const host = window.__TRAWL__!;
@@ -30,7 +31,7 @@ function SchemaTree({ schema, name, depth = 0 }: { schema?: Schema; name?: strin
         {type}
         {suffix}
         {schema.enum ? ` [${schema.enum.map(String).join(", ")}]` : ""}
-        {note && <span className="text-amber-400">{note}</span>}
+        {note && <span style={{ color: TONE.drift }}>{note}</span>}
       </span>
       {schema.description && (
         <span className="ml-2 text-muted-foreground/70">— {schema.description}</span>
@@ -109,7 +110,8 @@ function Actions({ engine, spec, endpoint }: { engine: Engine; spec: Spec; endpo
       </button>
       {contract && (
         <span
-          className={contract.lastStatus === "fail" ? "text-red-400" : "text-muted-foreground"}
+          style={contract.lastStatus === "fail" ? { color: TONE.violation } : undefined}
+          className={contract.lastStatus === "fail" ? undefined : "text-muted-foreground"}
           title={contract.name}
         >
           contract: {contract.lastStatus}
@@ -139,10 +141,13 @@ function Reality({ engine, spec, endpoint }: { engine: Engine; spec: Spec; endpo
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-3 text-xs">
-        <span className={`${STATUS[status].text}`}>
-          {STATUS[status].glyph} {stats.violations > 0 ? `${stats.violations} of ${stats.calls} broke the schema` : STATUS[status].label}
+        <span style={{ color: STATUS[status].color }}>
+          {STATUS[status].glyph}{" "}
+          {stats.violations > 0
+            ? `${stats.violations} of ${stats.calls} broke the schema`
+            : STATUS[status].label}
         </span>
-        <span className="text-muted-foreground tabular-nums">{stats.calls} calls</span>
+        <span className="text-muted-foreground">{stats.calls} calls</span>
         <Sparkline moments={stats.moments} buckets={20} />
       </div>
       {last?.responseBody && (
@@ -200,7 +205,7 @@ export function EndpointView({
               <div key={p.name} className="leading-5">
                 <span className="font-mono text-xs">
                   {p.name}
-                  {p.required && <span className="text-amber-400">*</span>}
+                  {p.required && <span style={{ color: TONE.drift }}>*</span>}
                   <span className="text-muted-foreground">
                     {" "}
                     {Array.isArray(p.schema?.type)

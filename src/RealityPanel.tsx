@@ -1,21 +1,22 @@
 import type { Engine } from "./engine";
 import type { Endpoint, Spec, Verdict } from "./model";
 import { endpointKey } from "./model";
+import { TONE } from "./tone";
 
 // No host API is needed here: everything on screen comes from the engine.
 
-const TONE: Record<string, string> = {
-  ok: "text-emerald-400",
-  violations: "text-red-400",
-  undocumented: "text-amber-400",
-  unmapped: "text-muted-foreground",
+const STATUS_COLOR: Record<string, string | undefined> = {
+  ok: TONE.ok,
+  violations: TONE.violation,
+  undocumented: TONE.drift,
+  unmapped: undefined,
 };
 
 function VerdictRow({ v }: { v: Verdict }) {
   return (
     <div className="flex gap-2 text-xs py-0.5">
       <span className="text-muted-foreground">{new Date(v.ts).toLocaleTimeString()}</span>
-      <span className={TONE[v.status]}>{v.httpStatus ?? "—"}</span>
+      <span style={{ color: STATUS_COLOR[v.status] }}>{v.httpStatus ?? "—"}</span>
       <span className="truncate">
         {v.violations.length > 0 ? `${v.violations.length} violation(s)` : v.status}
       </span>
@@ -53,7 +54,7 @@ export function RealityPanel({
         ) : (
           <span>
             {stats.calls} call{stats.calls === 1 ? "" : "s"} ·{" "}
-            <span className={stats.violations > 0 ? "text-red-400" : "text-emerald-400"}>
+            <span style={{ color: stats.violations > 0 ? TONE.violation : TONE.ok }}>
               {stats.violations > 0 ? `${stats.violations} with violations` : "all conform"}
             </span>
           </span>
@@ -68,7 +69,7 @@ export function RealityPanel({
           {violations.slice(0, 20).map((v, i) => (
             <div key={i} className="font-mono text-xs leading-5">
               <span className="text-muted-foreground">{v.where}</span> {v.pointer}
-              <span className="text-red-400">
+              <span style={{ color: TONE.violation }}>
                 {" "}
                 expected {v.expected}, got {v.actual}
               </span>
@@ -83,7 +84,7 @@ export function RealityPanel({
             not checked
           </div>
           {notes.map((n) => (
-            <p key={n} className="text-xs text-amber-400/80">
+            <p key={n} className="text-xs" style={{ color: TONE.drift, opacity: 0.85 }}>
               {n}
             </p>
           ))}

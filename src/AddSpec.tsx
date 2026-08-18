@@ -1,4 +1,5 @@
 import type { SpecStore } from "./store";
+import { TONE } from "./tone";
 
 const host = window.__TRAWL__!;
 const { useState } = host.react;
@@ -101,7 +102,7 @@ export function AddSpec({ store, onDone }: { store: SpecStore; onDone: () => voi
         </div>
       )}
 
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && <p className="text-sm" style={{ color: TONE.violation }}>{error}</p>}
     </div>
   );
 }

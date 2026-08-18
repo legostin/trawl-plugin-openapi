@@ -1,7 +1,7 @@
 import type { Endpoint } from "./model";
 import { endpointKey } from "./model";
 import { filterEndpoints, groupByTag } from "./tree";
-import { Sparkline, StatusStrip, statusOf } from "./status";
+import { Sparkline, StatusStrip, Tag, statusOf } from "./status";
 import type { EndpointStats } from "./session";
 
 const host = window.__TRAWL__!;
@@ -67,13 +67,18 @@ export function EndpointTree({
                         {s && s.calls > 0 && (
                           <span className="flex shrink-0 items-center gap-1.5">
                             <Sparkline moments={s.moments} />
-                            <span
-                              className={`text-[10px] tabular-nums ${
-                                s.violations > 0 ? "text-red-400" : "text-emerald-400"
-                              }`}
-                            >
-                              {s.calls}
-                            </span>
+                            {s.violations > 0 && (
+                              <Tag
+                                status="violations"
+                                value={s.violations}
+                                title={`${s.violations} of ${s.calls} calls broke the schema`}
+                              />
+                            )}
+                            <Tag
+                              status={s.violations > 0 ? "violations" : "ok"}
+                              value={s.calls}
+                              title={`${s.calls} call${s.calls === 1 ? "" : "s"} in this window`}
+                            />
                           </span>
                         )}
                       </>

@@ -7,6 +7,7 @@ import { EndpointView } from "./EndpointView";
 import { HostBindings } from "./HostBindings";
 import { RealityPanel } from "./RealityPanel";
 import { MetricRow } from "./Summary";
+import { TONE } from "./tone";
 import { getEngine } from "./engine";
 import type { Endpoint, Spec } from "./model";
 import { endpointKey } from "./model";
@@ -175,7 +176,7 @@ export function OpenApiApp() {
       </div>
 
       {engine.store.loadError && (
-        <p className="px-3 py-2 text-xs text-red-400 border-b border-border">
+        <p className="px-3 py-2 text-xs border-b border-border" style={{ color: TONE.violation }}>
           {engine.store.loadError}
         </p>
       )}

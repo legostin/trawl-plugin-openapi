@@ -1,5 +1,6 @@
 import type { Engine } from "./engine";
 import type { Spec } from "./model";
+import { TONE } from "./tone";
 
 export function DriftView({ engine, spec }: { engine: Engine; spec: Spec }) {
   const keys = engine.drift.keys().sort();
@@ -31,7 +32,7 @@ export function DriftView({ engine, spec }: { engine: Engine; spec: Spec }) {
                 </span>
               </div>
               {report.undocumented.map((p) => (
-                <div key={`u${p}`} className="font-mono text-xs pl-3 text-amber-400">
+                <div key={`u${p}`} className="font-mono text-xs pl-3" style={{ color: TONE.drift }}>
                   {p} <span className="text-muted-foreground">arrives, not in the spec</span>
                 </div>
               ))}
@@ -41,7 +42,7 @@ export function DriftView({ engine, spec }: { engine: Engine; spec: Spec }) {
                 </div>
               ))}
               {report.dropped > 0 && (
-                <p className="pl-3 text-xs text-amber-400/80">
+                <p className="pl-3 text-xs" style={{ color: TONE.drift, opacity: 0.85 }}>
                   {report.dropped} more paths were dropped at the 200-path cap.
                 </p>
               )}
@@ -63,7 +64,7 @@ export function DriftView({ engine, spec }: { engine: Engine; spec: Spec }) {
         ) : (
           changes.map((c, i) => (
             <div key={i} className="text-xs leading-5">
-              <span className={c.breaking ? "text-red-400" : "text-muted-foreground"}>
+              <span style={c.breaking ? { color: TONE.violation } : undefined} className={c.breaking ? undefined : "text-muted-foreground"}>
                 {c.breaking ? "breaking" : "safe"}
               </span>{" "}
               <span className="font-mono">{c.key}</span> — {c.detail}

@@ -1,5 +1,6 @@
 import { getEngine } from "./engine";
 import { requestSelection } from "./selection";
+import { TONE } from "./tone";
 import type { HostFlow } from "./trawl";
 
 const host = window.__TRAWL__!;
@@ -34,7 +35,7 @@ export function FlowPanel({ flow }: { flow: HostFlow }) {
             {verdict.endpointKey}
           </button>
         ) : (
-          <span className="text-amber-400">
+          <span style={{ color: TONE.drift }}>
             {verdict.status === "undocumented"
               ? "No endpoint documents this call."
               : "No spec is bound to this host."}
@@ -43,19 +44,19 @@ export function FlowPanel({ flow }: { flow: HostFlow }) {
       </div>
 
       {verdict.violations.length === 0 && verdict.endpointKey && (
-        <p className="text-emerald-400">Conforms to the schema.</p>
+        <p style={{ color: TONE.ok }}>✓ Conforms to the schema.</p>
       )}
       {verdict.violations.map((v, i) => (
         <div key={i} className="font-mono">
           <span className="text-muted-foreground">{v.where}</span> {v.pointer}
-          <span className="text-red-400">
+          <span style={{ color: TONE.drift }}>
             {" "}
             expected {v.expected}, got {v.actual}
           </span>
         </div>
       ))}
       {verdict.notes.map((n) => (
-        <p key={n} className="text-amber-400/80">
+        <p key={n} style={{ color: TONE.drift, opacity: 0.85 }}>
           {n}
         </p>
       ))}
