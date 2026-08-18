@@ -84,6 +84,8 @@ export interface Spec extends SpecDoc {
   /** What changed at the last refresh, kept so the Drift tab survives a restart. */
   lastDiff?: SpecChange[];
   lastDiffAt?: number;
+  /** Endpoint key → the id of the mock rule created for it. */
+  mocks?: Record<string, string>;
 }
 
 export type ViolationWhere =

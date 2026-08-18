@@ -30,6 +30,8 @@ export class Engine {
   /** Live samples keep their bodies so a window switch does not silently
    *  downgrade an already-validated flow to a body-less history row. */
   private liveSamples = new Map<number, FlowSample>();
+  /** The most recent call per endpoint, so Try-it can reuse real path values. */
+  private lastByEndpoint = new Map<string, FlowSample>();
 
   constructor(private host: TrawlHost) {
     this.store = new SpecStore(host);
@@ -80,6 +82,7 @@ export class Engine {
   async rebuild(): Promise<void> {
     this.aggregates.reset();
     this.drift.reset();
+    this.lastByEndpoint.clear();
     this.verdicts.clear();
     this.recentByEndpoint.clear();
     this.backfilling = true;
@@ -117,6 +120,7 @@ export class Engine {
     const match: Match | null = bound ? matchFlow(specs, sample) : null;
     const result = match ? validateFlow(match, sample) : { violations: [], notes: [] };
     this.aggregates.record(sample, match, result);
+    if (match) this.lastByEndpoint.set(`${match.spec.id} ${endpointKey(match.endpoint)}`, sample);
 
     // Drift needs a real body, so only live samples feed it. Parsing here
     // costs one extra JSON.parse per matched response — cheap next to the
@@ -172,6 +176,10 @@ export class Engine {
 
   verdictFor(flowId: number): Verdict | undefined {
     return this.verdicts.get(flowId);
+  }
+
+  lastCall(specId: string, key: string): FlowSample | undefined {
+    return this.lastByEndpoint.get(`${specId} ${key}`);
   }
 
   recent(specId: string, key: string): Verdict[] {

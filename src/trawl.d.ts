@@ -99,6 +99,16 @@ export interface TrawlHost {
   events: {
     on(type: string, cb: (payload: unknown) => void): () => void;
     emit(type: string, payload?: unknown): void;
+    known(): { type: string; lastPayload?: unknown }[];
+    describe?(type: string, meta: Record<string, unknown>): void;
+  };
+  rules: {
+    create(
+      draft: { name: string; pattern: string; phase: string; script: string },
+      options?: { open?: boolean },
+    ): Promise<string>;
+    remove(id: string): Promise<void>;
+    list(): Promise<{ id: string; name: string }[]>;
   };
   registerFlowAction(action: {
     id: string;

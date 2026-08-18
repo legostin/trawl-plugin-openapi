@@ -115,6 +115,25 @@ export class SpecStore {
     this.emit();
   }
 
+  async setMock(specId: string, key: string, ruleId: string): Promise<void> {
+    this.specs = this.specs.map((s) =>
+      s.id === specId ? { ...s, mocks: { ...(s.mocks ?? {}), [key]: ruleId } } : s,
+    );
+    await this.persist();
+    this.emit();
+  }
+
+  async clearMock(specId: string, key: string): Promise<void> {
+    this.specs = this.specs.map((s) => {
+      if (s.id !== specId) return s;
+      const mocks = { ...(s.mocks ?? {}) };
+      delete mocks[key];
+      return { ...s, mocks };
+    });
+    await this.persist();
+    this.emit();
+  }
+
   async setHosts(id: string, hosts: string[]): Promise<void> {
     this.specs = this.specs.map((s) => (s.id === id ? { ...s, hosts } : s));
     await this.persist();
