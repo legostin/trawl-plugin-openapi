@@ -73,6 +73,17 @@ supplies an `example`: a realistic-looking fake gets mistaken for real data.
 Buttons whose plugin is missing are disabled with the reason. Collection import
 needs HTTP Client 0.8.0, contracts need Schema Check 0.3.0.
 
+## For agents
+
+With Trawl's MCP server running, an agent gets seven read-only tools:
+`openapi_list_specs`, `openapi_find_endpoint`, `openapi_endpoint_schema`,
+`openapi_coverage`, `openapi_violations`, `openapi_undocumented` and
+`openapi_drift`. Together they answer "what does this API promise?" and "where
+has the traffic disagreed with it?" — the two questions the traffic log alone
+cannot.
+
+Nothing here mutates: mocks and contracts stay a human action.
+
 ## Roadmap
 
-MCP tools for agents, then the flow-card tab in the request details.
+The flow-card tab in the request details, once the host grows one.
