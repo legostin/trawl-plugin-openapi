@@ -119,6 +119,12 @@ export interface TrawlHost {
     remove(id: string): Promise<void>;
     list(): Promise<{ id: string; name: string }[]>;
   };
+  /** Requires host API 1.12.0 — optional so the plugin loads on older apps. */
+  registerFlowPanel?(panel: {
+    id: string;
+    label: string;
+    component: React.ComponentType<{ flow: HostFlow }>;
+  }): void;
   registerFlowAction(action: {
     id: string;
     label: string;

@@ -84,6 +84,9 @@ cannot.
 
 Nothing here mutates: mocks and contracts stay a human action.
 
-## Roadmap
+## In the request card
 
-The flow-card tab in the request details, once the host grows one.
+On Trawl 1.12.0 and newer the plugin adds an **OpenAPI** tab to the request
+details: which endpoint the request matched, whether it conformed, and what
+broke if it did not — with a link into the spec. On older hosts the "Open in
+spec" action does the same job in one click less detail.

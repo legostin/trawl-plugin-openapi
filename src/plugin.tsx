@@ -1,4 +1,5 @@
 import { startEngine } from "./engine";
+import { FlowPanel } from "./FlowPanel";
 import { sampleFromFlow } from "./flow";
 import { matchFlow } from "./match";
 import { registerMcpTools } from "./mcp";
@@ -17,8 +18,14 @@ if (host) {
   // Init-time only: that is how the host attributes the tools to this plugin.
   registerMcpTools(host, engine);
 
-  // Until the host grows a flow panel (stage 7), this button is the bridge
-  // from a captured request to the endpoint that documents it.
+  // 1.12.0 and newer: the verdict lives in the request card itself. On older
+  // hosts the "Open in spec" action below stays the only bridge.
+  if (host.registerFlowPanel) {
+    host.registerFlowPanel({ id: "openapi", label: "OpenAPI", component: FlowPanel });
+  }
+
+  // The bridge for hosts older than 1.12.0, and a shortcut everywhere else.
+  //
   host.registerFlowAction({
     id: "openapi-open-in-spec",
     label: "Open in spec",
