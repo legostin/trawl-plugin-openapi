@@ -1,3 +1,4 @@
+import { AnnotatedBody } from "./AnnotatedBody";
 import type { Engine } from "./engine";
 import { exampleFor } from "./example";
 import { buildMock } from "./mock";
@@ -9,6 +10,7 @@ import {
   hasSchemaCheck,
   openInClient,
 } from "./neighbours";
+import { STATUS, Sparkline, statusOf } from "./status";
 import { buildRequest } from "./tryit";
 
 const host = window.__TRAWL__!;
@@ -117,6 +119,43 @@ function Actions({ engine, spec, endpoint }: { engine: Engine; spec: Spec; endpo
   );
 }
 
+/** What the traffic actually did with this endpoint, and the body to prove it. */
+function Reality({ engine, spec, endpoint }: { engine: Engine; spec: Spec; endpoint: Endpoint }) {
+  const key = endpointKey(endpoint);
+  const stats = engine.aggregates.forEndpoint(spec.id, key);
+  const status = statusOf(stats);
+  const last = engine.lastCall(spec.id, key);
+  const verdict = last ? engine.verdictFor(last.id) : undefined;
+  const drift = engine.drift.report(key);
+
+  if (stats.calls === 0) {
+    return (
+      <p className="text-xs text-muted-foreground">
+        {STATUS.never.glyph} Not called in this window.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-3 text-xs">
+        <span className={`${STATUS[status].text}`}>
+          {STATUS[status].glyph} {stats.violations > 0 ? `${stats.violations} of ${stats.calls} broke the schema` : STATUS[status].label}
+        </span>
+        <span className="text-muted-foreground tabular-nums">{stats.calls} calls</span>
+        <Sparkline moments={stats.moments} buckets={20} />
+      </div>
+      {last?.responseBody && (
+        <AnnotatedBody
+          body={last.responseBody}
+          violations={verdict?.violations ?? []}
+          driftPaths={drift?.undocumented ?? []}
+        />
+      )}
+    </div>
+  );
+}
+
 export function EndpointView({
   engine,
   spec,
@@ -142,6 +181,7 @@ export function EndpointView({
         )}
       </div>
       {spec && <Actions engine={engine} spec={spec} endpoint={endpoint} />}
+      {spec && <Reality engine={engine} spec={spec} endpoint={endpoint} />}
       {endpoint.summary && <p className="text-sm">{endpoint.summary}</p>}
       {endpoint.description && endpoint.description !== endpoint.summary && (
         <p className="text-sm text-muted-foreground whitespace-pre-wrap">{endpoint.description}</p>

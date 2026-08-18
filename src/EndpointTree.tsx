@@ -1,6 +1,8 @@
 import type { Endpoint } from "./model";
 import { endpointKey } from "./model";
 import { filterEndpoints, groupByTag } from "./tree";
+import { Sparkline, StatusStrip, statusOf } from "./status";
+import type { EndpointStats } from "./session";
 
 const host = window.__TRAWL__!;
 const { useMemo, useState } = host.react;
@@ -15,7 +17,7 @@ export function EndpointTree({
   endpoints: Endpoint[];
   selected: Endpoint | null;
   onSelect: (e: Endpoint) => void;
-  stats?: (e: Endpoint) => { calls: number; violations: number } | undefined;
+  stats?: (e: Endpoint) => EndpointStats | undefined;
 }) {
   const [query, setQuery] = useState("");
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
@@ -47,24 +49,34 @@ export function EndpointTree({
                 <button
                   key={`${group.tag}:${key}`}
                   onClick={() => onSelect(e)}
-                  className={`w-full text-left pl-5 pr-3 py-1 flex items-center gap-2 ${
+                  className={`flex w-full items-stretch gap-2 py-1 pl-2 pr-3 text-left ${
                     isSelected ? "bg-accent" : "hover:bg-accent/40"
                   }`}
                   title={e.summary ?? key}
                 >
-                  <MethodBadge method={e.method} />
-                  <span className="truncate font-mono text-xs">{e.pathTemplate}</span>
                   {(() => {
                     const s = stats?.(e);
-                    if (!s || s.calls === 0) return null;
+                    const status = s ? statusOf(s) : "never";
                     return (
-                      <span
-                        className={`ml-auto text-[10px] ${
-                          s.violations > 0 ? "text-red-400" : "text-emerald-400"
-                        }`}
-                      >
-                        {s.calls}
-                      </span>
+                      <>
+                        <StatusStrip status={status} />
+                        <span className="flex min-w-0 flex-1 items-center gap-2">
+                          <MethodBadge method={e.method} />
+                          <span className="truncate font-mono text-xs">{e.pathTemplate}</span>
+                        </span>
+                        {s && s.calls > 0 && (
+                          <span className="flex shrink-0 items-center gap-1.5">
+                            <Sparkline moments={s.moments} />
+                            <span
+                              className={`text-[10px] tabular-nums ${
+                                s.violations > 0 ? "text-red-400" : "text-emerald-400"
+                              }`}
+                            >
+                              {s.calls}
+                            </span>
+                          </span>
+                        )}
+                      </>
                     );
                   })()}
                 </button>
