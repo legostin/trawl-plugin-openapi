@@ -169,7 +169,7 @@ export class Engine {
     }
     if (!verdict.specId || !verdict.endpointKey) return;
     const key = `${verdict.specId} ${verdict.endpointKey}`;
-    const list = this.recentByEndpoint.get(key) ?? [];
+    const list = (this.recentByEndpoint.get(key) ?? []).filter((v) => v.flowId !== verdict.flowId);
     list.unshift(verdict);
     this.recentByEndpoint.set(key, list.slice(0, 20));
   }

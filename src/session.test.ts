@@ -132,3 +132,33 @@ test("the moment buffer is bounded — a busy endpoint must not grow forever", (
 test("an endpoint that was never called reports no moments", () => {
   expect(new Aggregates().forEndpoint("s", "GET /nope").moments).toEqual([]);
 });
+
+test("one flow is one call, however many events the host sends about it", () => {
+  // The host fires flow:added and then flow:updated for the same request;
+  // counting both turns every call into two and fills the history with twins.
+  const agg = new Aggregates();
+  agg.record(sample({ id: 7, ts: 10 }), match, { violations: [], notes: [] });
+  agg.record(sample({ id: 7, ts: 10 }), match, { violations: [], notes: [] });
+  const stats = agg.forEndpoint("s", "GET /users/{id}");
+  expect(stats.calls).toBe(1);
+  expect(stats.moments).toEqual([10]);
+});
+
+test("a revision that finds a violation marks the call without counting it twice", () => {
+  // The response arrives on the second event, and only then can it break the
+  // schema — the endpoint must go from clean to broken without gaining a call.
+  const agg = new Aggregates();
+  agg.record(sample({ id: 7 }), match, { violations: [], notes: [] });
+  agg.record(sample({ id: 7 }), match, {
+    violations: [{ where: "response.body", pointer: "/id", expected: "string", actual: "number" }],
+    notes: [],
+  });
+  expect(agg.forEndpoint("s", "GET /users/{id}")).toMatchObject({ calls: 1, violations: 1 });
+});
+
+test("an undocumented path is tallied once per flow", () => {
+  const agg = new Aggregates();
+  agg.record(sample({ id: 9, path: "/ghost" }), null, { violations: [], notes: [] });
+  agg.record(sample({ id: 9, path: "/ghost" }), null, { violations: [], notes: [] });
+  expect(agg.undocumented()[0].count).toBe(1);
+});

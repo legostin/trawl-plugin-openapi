@@ -40,6 +40,9 @@ export interface UndocumentedRow {
 }
 
 const UNDOCUMENTED_CAP = 200;
+/** How many flows are remembered for deduplication. Bounded like everything
+ *  else here; past it the oldest is forgotten and could be counted again. */
+const SEEN_CAP = 5000;
 const EMPTY: EndpointStats = { calls: 0, violations: 0, moments: [] };
 
 /** Per-endpoint counters plus the tally of calls nothing documents. */
@@ -47,10 +50,29 @@ export class Aggregates {
   private stats = new Map<string, EndpointStats>();
   private unknown = new Map<string, UndocumentedRow>();
   private dropped = 0;
+  /** Flows already counted, and whether they were violating at the time.
+   *
+   *  The host reports a request twice — once when it starts, once when its
+   *  response lands — and only the second event can break a schema. Counting
+   *  both turns every call into two; ignoring the second would lose the
+   *  violation. So a repeat revises rather than adds. */
+  private seen = new Map<number, { key: string; violating: boolean }>();
+
+  private remember(id: number, key: string, violating: boolean) {
+    this.seen.set(id, { key, violating });
+    if (this.seen.size > SEEN_CAP) {
+      const oldest = this.seen.keys().next().value;
+      if (oldest !== undefined) this.seen.delete(oldest);
+    }
+  }
 
   record(sample: FlowSample, match: Match | null, result: ValidationResult): void {
+    const violating = result.violations.length > 0;
+    const previous = this.seen.get(sample.id);
+
     if (!match) {
       const key = `${sample.method} ${sample.host}${sample.path}`;
+      if (previous?.key === key) return;
       const row = this.unknown.get(key);
       if (row) {
         row.count += 1;
@@ -64,16 +86,29 @@ export class Aggregates {
       } else {
         this.dropped += 1;
       }
+      this.remember(sample.id, key, false);
       return;
     }
+
     const key = `${match.spec.id} ${endpointKey(match.endpoint)}`;
+    if (previous?.key === key) {
+      // A second event about the same flow: revise the verdict, keep the count.
+      const current = this.stats.get(key);
+      if (current && previous.violating !== violating) {
+        current.violations += violating ? 1 : -1;
+      }
+      this.remember(sample.id, key, violating);
+      return;
+    }
+
     const current = this.stats.get(key) ?? { calls: 0, violations: 0, moments: [] };
     current.calls += 1;
-    if (result.violations.length > 0) current.violations += 1;
+    if (violating) current.violations += 1;
     current.lastTs = Math.max(current.lastTs ?? 0, sample.ts);
     current.moments.push(sample.ts);
     if (current.moments.length > MOMENT_CAP) current.moments.shift();
     this.stats.set(key, current);
+    this.remember(sample.id, key, violating);
   }
 
   forEndpoint(specId: string, key: string): EndpointStats {
@@ -102,6 +137,7 @@ export class Aggregates {
   reset(): void {
     this.stats.clear();
     this.unknown.clear();
+    this.seen.clear();
     this.dropped = 0;
   }
 }
