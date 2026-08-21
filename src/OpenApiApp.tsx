@@ -8,7 +8,7 @@ import { HostBindings } from "./HostBindings";
 import { RealityPanel } from "./RealityPanel";
 import { MetricRow } from "./Summary";
 import { TONE } from "./tone";
-import { getEngine } from "./engine";
+import { getEngine, type Engine } from "./engine";
 import type { Endpoint, Spec } from "./model";
 import { endpointKey } from "./model";
 import { hasCollectionImport, importCollection, watchContracts } from "./neighbours";
@@ -24,6 +24,72 @@ const WINDOWS: { value: SessionWindow; label: string }[] = [
   { value: "project", label: "Whole project" },
   { value: "filter", label: "Current traffic filter" },
 ];
+
+/** The spec's actions. On a narrow window the host's Toolbar folds what does
+ *  not fit into a "⋯" menu; on an older host they stay plain buttons. */
+function HeaderActions({
+  engine,
+  active,
+  onAdd,
+  onRemoved,
+}: {
+  engine: Engine;
+  active: Spec | null;
+  onAdd: () => void;
+  onRemoved: () => void;
+}) {
+  const items = [
+    ...(active?.source.kind === "url"
+      ? [
+          {
+            id: "refresh",
+            label: "Refresh",
+            priority: 3,
+            onClick: () => void engine.store.refresh(active.id),
+          },
+        ]
+      : []),
+    { id: "add", label: "Add spec", priority: 2, onClick: onAdd },
+    ...(hasCollectionImport() && active
+      ? [
+          {
+            id: "import",
+            label: "Import as collection",
+            priority: 1,
+            onClick: () =>
+              importCollection(
+                active.title,
+                active.endpoints.map((e) => ({
+                  name: `${e.method} ${e.pathTemplate}`,
+                  ...buildRequest(active, e, engine.lastCall(active.id, endpointKey(e))),
+                })),
+              ),
+          },
+        ]
+      : []),
+    {
+      id: "remove",
+      label: "Remove",
+      priority: 0,
+      onClick: () => {
+        if (active) void engine.store.remove(active.id);
+        onRemoved();
+      },
+    },
+  ];
+
+  const Toolbar = host.ui.Toolbar;
+  if (Toolbar) return <Toolbar items={items} />;
+  return (
+    <div className="flex gap-3 text-xs">
+      {items.map((i) => (
+        <button key={i.id} className="underline" onClick={i.onClick}>
+          {i.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export function OpenApiApp() {
   const engine = getEngine();
@@ -118,40 +184,13 @@ export function OpenApiApp() {
             : `${totals.calls} calls · ${totals.violations} with violations`}
           {undocumented.length > 0 && ` · ${undocumented.length} undocumented`}
         </span>
-        <div className="ml-auto flex gap-3 text-xs">
-          {active?.source.kind === "url" && (
-            <button className="underline" onClick={() => void engine.store.refresh(active.id)}>
-              Refresh
-            </button>
-          )}
-          {hasCollectionImport() && active && (
-            <button
-              className="underline"
-              onClick={() =>
-                importCollection(
-                  active.title,
-                  active.endpoints.map((e) => ({
-                    name: `${e.method} ${e.pathTemplate}`,
-                    ...buildRequest(active, e, engine.lastCall(active.id, endpointKey(e))),
-                  })),
-                )
-              }
-            >
-              Import as collection
-            </button>
-          )}
-          <button className="underline" onClick={() => setAdding(true)}>
-            Add spec
-          </button>
-          <button
-            className="underline"
-            onClick={() => {
-              if (active) void engine.store.remove(active.id);
-              setSelected(null);
-            }}
-          >
-            Remove
-          </button>
+        <div className="ml-auto min-w-0">
+          <HeaderActions
+            engine={engine}
+            active={active}
+            onAdd={() => setAdding(true)}
+            onRemoved={() => setSelected(null)}
+          />
         </div>
       </div>
 

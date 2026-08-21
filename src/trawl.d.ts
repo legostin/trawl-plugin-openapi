@@ -131,6 +131,18 @@ export interface TrawlHost {
     run(flow: HostFlow): void;
   }): void;
   ui: {
+    /** Requires host API 1.13.0 — optional so the plugin runs on older apps. */
+    Toolbar?: React.ComponentType<{
+      items: {
+        id: string;
+        label: string;
+        onClick: () => void;
+        disabled?: boolean;
+        title?: string;
+        priority?: number;
+      }[];
+      className?: string;
+    }>;
     MethodBadge: React.ComponentType<{ method: string; className?: string }>;
     Button: React.ComponentType<Record<string, unknown>>;
     Input: React.ComponentType<Record<string, unknown>>;
