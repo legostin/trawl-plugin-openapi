@@ -151,9 +151,11 @@ export function OpenApiApp() {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex items-center gap-3 px-3 py-2 border-b border-border text-sm">
+      <div className="flex items-center gap-3 px-3 py-2 border-b border-border text-sm overflow-hidden">
         <select
           className="bg-transparent"
+          // A long title must not spend the whole row on itself.
+          style={{ maxWidth: 240, minWidth: 0 }}
           value={active?.id}
           onChange={(e) => {
             setActiveId(e.target.value);
@@ -178,13 +180,19 @@ export function OpenApiApp() {
             </option>
           ))}
         </select>
-        <span className="text-xs text-muted-foreground">
+        <span
+          className="text-xs text-muted-foreground"
+          style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+        >
           {engine.backfilling
             ? "reading history…"
             : `${totals.calls} calls · ${totals.violations} with violations`}
           {undocumented.length > 0 && ` · ${undocumented.length} undocumented`}
         </span>
-        <div className="ml-auto min-w-0">
+        {/* A definite share of the row rather than "whatever is left after the
+            content": the toolbar measures the box it is given, so the box has
+            to be the truth. */}
+        <div style={{ flex: "1 1 0%", minWidth: 0, marginLeft: "auto" }}>
           <HeaderActions
             engine={engine}
             active={active}
