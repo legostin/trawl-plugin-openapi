@@ -1,5 +1,5 @@
 import { annotate, type AnnotatedLine } from "./annotate";
-import type { Violation } from "./model";
+import type { Schema, Violation } from "./model";
 import { TONE, wash } from "./tone";
 
 const MARK = {
@@ -26,6 +26,13 @@ function Line({ line }: { line: AnnotatedLine }) {
       }}
     >
       <span>{line.text}</span>
+      {/* What the spec promised, held to the right so the body still reads as
+          a body rather than a table. */}
+      {line.expected && !mark && (
+        <span className="text-muted-foreground" style={{ marginLeft: 12, opacity: 0.55 }}>
+          {line.expected}
+        </span>
+      )}
       {mark && line.note && (
         <span style={{ marginLeft: 12, color: mark.color }}>
           {mark.glyph} {line.note}
@@ -45,12 +52,14 @@ export function AnnotatedBody({
   body,
   violations,
   driftPaths,
+  schema,
 }: {
   body: string;
   violations: Violation[];
   driftPaths: string[];
+  schema?: Schema;
 }) {
-  const result = annotate(body, violations, driftPaths);
+  const result = annotate(body, violations, driftPaths, schema);
 
   if (result.skipped) {
     return <p className="text-xs text-muted-foreground">{result.skipped}</p>;
@@ -66,6 +75,12 @@ export function AnnotatedBody({
           <Line key={i} line={line} />
         ))}
       </div>
+      {result.missing.length > 0 && (
+        <p className="mt-1" style={{ fontSize: 10, color: TONE.idle }}>
+          documented but not in this response: {result.missing.slice(0, 12).join(", ")}
+          {result.missing.length > 12 && ` and ${result.missing.length - 12} more`}
+        </p>
+      )}
       {result.unmatched.length > 0 && (
         <p className="mt-1" style={{ fontSize: 10, color: TONE.drift, opacity: 0.85 }}>
           {result.unmatched.length} violation

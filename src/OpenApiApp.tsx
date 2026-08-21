@@ -5,7 +5,6 @@ import { UndocumentedView } from "./UndocumentedView";
 import { EndpointTree } from "./EndpointTree";
 import { EndpointView } from "./EndpointView";
 import { HostBindings } from "./HostBindings";
-import { RealityPanel } from "./RealityPanel";
 import { MetricRow } from "./Summary";
 import { TONE } from "./tone";
 import { getEngine, type Engine } from "./engine";
@@ -240,11 +239,11 @@ export function OpenApiApp() {
               }
             />
           </div>
+          {/* One column, not two: the spec and what the traffic did with it
+              belong to the same reading, and splitting them made the eye
+              travel for every comparison. */}
           <div className="flex-1 overflow-auto">
             <EndpointView engine={engine} spec={active} endpoint={selected} />
-          </div>
-          <div className="w-80 border-l border-border overflow-auto">
-            <RealityPanel engine={engine} spec={active} endpoint={selected} />
           </div>
         </div>
       ) : (

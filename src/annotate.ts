@@ -1,4 +1,5 @@
-import type { Violation } from "./model";
+import { schemaPaths, valuePaths } from "./drift";
+import type { Schema, Violation } from "./model";
 
 /** Same ceiling as validation: past this the body is not worth pretty-printing. */
 export const MAX_BODY_BYTES = 512 * 1024;
@@ -14,12 +15,17 @@ export interface AnnotatedLine {
   pointer: string;
   mark?: Mark;
   note?: string;
+  /** What the spec promised here — the point of reading the two together. */
+  expected?: string;
   /** A stand-in for lines hidden between marked regions. */
   collapsed?: number;
 }
 
 export interface Annotated {
   lines: AnnotatedLine[];
+  /** Documented paths this body never had — the half of drift that showing
+   *  only what arrived would hide. */
+  missing: string[];
   /** Pointers the verdict mentioned that this body no longer has. */
   unmatched: string[];
   /** Why nothing was printed, when nothing was. */
@@ -80,6 +86,25 @@ function print(
 /** Array indices collapse the way drift reports them: /tags/1/name → /tags[]/name. */
 const asDriftPath = (pointer: string) => pointer.replace(/\/\d+(?=\/|$)/g, "[]");
 
+/** The schema node sitting at a pointer, walking arrays through their items. */
+function schemaAt(schema: Schema | undefined, pointer: string): Schema | undefined {
+  let node = schema;
+  for (const raw of pointer.split("/").slice(1)) {
+    if (!node) return undefined;
+    node = /^\d+$/.test(raw) ? node.items : node.properties?.[raw];
+  }
+  return node;
+}
+
+/** How the spec describes a value, in the words it will be judged by. */
+function describe(schema: Schema | undefined): string | undefined {
+  if (!schema || schema.incomplete || schema.circular) return undefined;
+  if (schema.enum) return schema.enum.map(String).join(" | ");
+  const type = Array.isArray(schema.type) ? schema.type.join(" | ") : schema.type;
+  if (!type) return undefined;
+  return schema.format ? `${type} <${schema.format}>` : type;
+}
+
 /** Keep the marked lines and their surroundings; say how much was hidden. */
 function collapse(lines: AnnotatedLine[]): AnnotatedLine[] {
   if (lines.length <= MAX_ANNOTATED) return lines;
@@ -120,15 +145,21 @@ export function annotate(
   bodyText: string,
   violations: Violation[],
   driftPaths: string[],
+  schema?: Schema,
 ): Annotated {
   if (bodyText.length > MAX_BODY_BYTES) {
-    return { lines: [], unmatched: [], skipped: "The body is too large to annotate." };
+    return { lines: [], missing: [], unmatched: [], skipped: "The body is too large to annotate." };
   }
   let parsed: unknown;
   try {
     parsed = JSON.parse(bodyText);
   } catch {
-    return { lines: [], unmatched: [], skipped: "The body is not JSON, so nothing is marked." };
+    return {
+      lines: [],
+      missing: [],
+      unmatched: [],
+      skipped: "The body is not JSON, so nothing is marked.",
+    };
   }
 
   const lines: AnnotatedLine[] = [];
@@ -147,10 +178,16 @@ export function annotate(
 
   const drift = new Set(driftPaths);
   for (const line of lines) {
+    line.expected = describe(schemaAt(schema, line.pointer));
     if (line.mark || !drift.has(asDriftPath(line.pointer))) continue;
     line.mark = "undocumented";
     line.note = "arrives, not in the spec";
   }
 
-  return { lines: collapse(lines), unmatched };
+  const arrived = new Set([...valuePaths(parsed)].map(asDriftPath));
+  const missing = schema
+    ? [...schemaPaths(schema)].filter((p) => !arrived.has(p)).sort()
+    : [];
+
+  return { lines: collapse(lines), missing, unmatched };
 }

@@ -2,6 +2,7 @@ import { AnnotatedBody } from "./AnnotatedBody";
 import type { Engine } from "./engine";
 import { exampleFor } from "./example";
 import { buildMock } from "./mock";
+import { responseSpecFor } from "./validate";
 import { endpointKey, type Endpoint, type Schema, type Spec } from "./model";
 import {
   contractFor,
@@ -16,6 +17,7 @@ import { buildRequest } from "./tryit";
 
 const host = window.__TRAWL__!;
 const { MethodBadge } = host.ui;
+const { useState } = host.react;
 
 /** One line per field, so a response shape is readable without unfolding JSON. */
 function SchemaTree({ schema, name, depth = 0 }: { schema?: Schema; name?: string; depth?: number }) {
@@ -121,6 +123,56 @@ function Actions({ engine, spec, endpoint }: { engine: Engine; spec: Spec; endpo
   );
 }
 
+const FIRST_SHOWN = 8;
+
+/** The calls behind the numbers. Clicking one opens it in the traffic list —
+ *  on a host that can do that; older ones simply do not react. */
+function RecentCalls({
+  engine,
+  spec,
+  endpoint,
+}: {
+  engine: Engine;
+  spec: Spec;
+  endpoint: Endpoint;
+}) {
+  const [all, setAll] = useState(false);
+  const recent = engine.recent(spec.id, endpointKey(endpoint));
+  if (recent.length === 0) return null;
+  const shown = all ? recent : recent.slice(0, FIRST_SHOWN);
+  const canOpen = typeof host.openFlow === "function";
+
+  return (
+    <section>
+      <h3 className="text-xs uppercase tracking-wide text-muted-foreground mb-1">recent calls</h3>
+      {shown.map((v) => (
+        <button
+          key={v.flowId}
+          disabled={!canOpen}
+          onClick={() => host.openFlow?.(v.flowId)}
+          title={canOpen ? "Open this request in the traffic list" : undefined}
+          className={`flex w-full items-center gap-2 py-0.5 text-left text-xs ${
+            canOpen ? "hover:bg-accent/40" : ""
+          }`}
+        >
+          <span className="text-muted-foreground">{new Date(v.ts).toLocaleTimeString()}</span>
+          <span style={{ color: v.violations.length > 0 ? TONE.violation : TONE.ok }}>
+            {v.httpStatus ?? "—"}
+          </span>
+          <span className="truncate">
+            {v.violations.length > 0 ? `${v.violations.length} violation(s)` : v.status}
+          </span>
+        </button>
+      ))}
+      {recent.length > FIRST_SHOWN && (
+        <button className="mt-1 text-xs underline" onClick={() => setAll((v) => !v)}>
+          {all ? "Show fewer" : `Show all ${recent.length}`}
+        </button>
+      )}
+    </section>
+  );
+}
+
 /** What the traffic actually did with this endpoint, and the body to prove it. */
 function Reality({ engine, spec, endpoint }: { engine: Engine; spec: Spec; endpoint: Endpoint }) {
   const key = endpointKey(endpoint);
@@ -155,8 +207,15 @@ function Reality({ engine, spec, endpoint }: { engine: Engine; spec: Spec; endpo
           body={last.responseBody}
           violations={verdict?.violations ?? []}
           driftPaths={drift?.undocumented ?? []}
+          schema={
+            last.status !== undefined
+              ? responseSpecFor(endpoint, last.status)?.body.schema
+              : undefined
+          }
         />
       )}
+
+      <RecentCalls engine={engine} spec={spec} endpoint={endpoint} />
     </div>
   );
 }

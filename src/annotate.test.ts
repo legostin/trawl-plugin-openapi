@@ -76,3 +76,45 @@ test("the root pointer marks the opening line", () => {
   const r = annotate(BODY, [v("", "object", "array")], []);
   expect(r.lines[0].mark).toBe("violation");
 });
+
+import type { Schema } from "./model";
+
+const SCHEMA: Schema = {
+  type: "object",
+  properties: {
+    id: { type: "integer" },
+    status: { type: "string", enum: ["ok", "fail"] },
+    tags: { type: "array", items: { type: "object", properties: { name: { type: "string" } } } },
+    missing_one: { type: "string" },
+  },
+};
+
+test("each line carries the type the spec promised for it", () => {
+  const body = JSON.stringify({ id: 7, status: "ok", tags: [{ name: "a" }] });
+  const r = annotate(body, [], [], SCHEMA);
+  expect(r.lines.find((l) => l.text.includes('"id"'))?.expected).toBe("integer");
+  expect(r.lines.find((l) => l.text.includes('"name"'))?.expected).toBe("string");
+});
+
+test("an enum is spelled out, since that is what the value is judged against", () => {
+  const r = annotate(JSON.stringify({ status: "ok" }), [], [], SCHEMA);
+  expect(r.lines.find((l) => l.text.includes('"status"'))?.expected).toContain("ok");
+});
+
+test("fields the spec documented but the body never had are listed separately", () => {
+  // The other half of drift: showing only what arrived hides what did not.
+  const r = annotate(JSON.stringify({ id: 7 }), [], [], SCHEMA);
+  expect(r.missing).toContain("/missing_one");
+  expect(r.missing).toContain("/status");
+});
+
+test("a field with no schema behind it simply has no annotation", () => {
+  const r = annotate(JSON.stringify({ id: 7, extra: 1 }), [], [], SCHEMA);
+  expect(r.lines.find((l) => l.text.includes('"extra"'))?.expected).toBeUndefined();
+});
+
+test("without a schema nothing is annotated and nothing is called missing", () => {
+  const r = annotate(JSON.stringify({ id: 7 }), [], []);
+  expect(r.missing).toEqual([]);
+  expect(r.lines.every((l) => l.expected === undefined)).toBe(true);
+});
