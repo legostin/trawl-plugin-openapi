@@ -5,6 +5,7 @@ import { matchFlow } from "./match";
 import { registerMcpTools } from "./mcp";
 import { endpointKey } from "./model";
 import { OpenApiApp } from "./OpenApiApp";
+import { screenLine } from "./screen";
 import { requestSelection } from "./selection";
 
 const host = window.__TRAWL__;
@@ -17,6 +18,10 @@ if (host) {
 
   // Init-time only: that is how the host attributes the tools to this plugin.
   registerMcpTools(host, engine);
+
+  // 1.15.0 and newer: tell the agent which endpoint is open, so it stops
+  // having to ask what the user is looking at.
+  host.registerScreenContext?.(screenLine);
 
   // 1.12.0 and newer: the verdict lives in the request card itself. On older
   // hosts the "Open in spec" action below stays the only bridge.

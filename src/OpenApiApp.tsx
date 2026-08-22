@@ -12,6 +12,7 @@ import type { Endpoint, Spec } from "./model";
 import { endpointKey } from "./model";
 import { hasCollectionImport, importCollection, watchContracts } from "./neighbours";
 import { onSelection, takeSelection } from "./selection";
+import { setScreen } from "./screen";
 import { buildRequest } from "./tryit";
 import type { SessionWindow } from "./session";
 
@@ -147,6 +148,8 @@ export function OpenApiApp() {
 
   const totals = engine.aggregates.totals();
   const undocumented = engine.aggregates.undocumented();
+  // What the agent will be told if a message is sent while this is on screen.
+  setScreen({ spec: active, endpoint: selected, tab });
 
   return (
     <div className="h-full flex flex-col">

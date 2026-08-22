@@ -155,6 +155,8 @@ export interface TrawlHost {
     component: React.ComponentType;
   }): void;
   setMode(id: string): void;
+  /** Requires host API 1.15.0 — optional, so an older app simply learns less. */
+  registerScreenContext?(describe: () => string | null): void;
   /** Show one captured request. Requires host API 1.14.0 — optional so the
    *  plugin keeps working on older apps, where the rows simply do not click. */
   openFlow?(id: number): void;
